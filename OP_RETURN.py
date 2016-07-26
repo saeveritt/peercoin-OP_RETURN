@@ -339,9 +339,9 @@ def OP_RETURN_create_txn(inputs, outputs, metadata, metadata_pos, testnet):
 	if metadata_len<=75:
 		payload=bytearray((metadata_len,))+metadata # length byte + data (https://en.bitcoin.it/wiki/Script)
 	elif metadata_len<=256:
-		payload="\x4c"+bytearray((metadata_len,))+metadata # OP_PUSHDATA1 format
+		payload=b'\x4c'+bytearray((metadata_len,))+metadata # OP_PUSHDATA1 format
 	else:
-		payload="\x4d"+bytearray((metadata_len%256,))+bytearray((int(metadata_len/256),))+metadata # OP_PUSHDATA2 format
+		payload=b'\x4d'+bytearray((metadata_len%256,))+bytearray((int(metadata_len/256),))+metadata # OP_PUSHDATA2 format
 
 	metadata_pos=min(max(0, metadata_pos), len(txn_unpacked['vout'])) # constrain to valid values
 
