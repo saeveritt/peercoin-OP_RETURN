@@ -1,19 +1,19 @@
 # store-OP_RETURN.py
-# 
+#
 # CLI wrapper for OP_RETURN.py to store data using OP_RETURNs
 #
 # Copyright (c) Coin Sciences Ltd
-# 
+#
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
 # in the Software without restriction, including without limitation the rights
 # to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 # copies of the Software, and to permit persons to whom the Software is
 # furnished to do so, subject to the following conditions:
-# 
+#
 # The above copyright notice and this permission notice shall be included in
 # all copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -27,16 +27,17 @@ import sys, string
 from OP_RETURN import *
 
 
-if len(sys.argv)<2:
+if len(sys.argv)<3:
 	sys.exit(
 '''Usage:
-python store-OP_RETURN.py <data> <testnet (optional)>'''
+python store-OP_RETURN.py <change_address> <data> <testnet (optional)>'''
 	)
-	
-data=sys.argv[1]
 
-if len(sys.argv)>2:
-	testnet=bool(sys.argv[2])
+change_address=sys.argv[1]
+data=sys.argv[2]
+
+if len(sys.argv)>3:
+	testnet=bool(sys.argv[3])
 else:
 	testnet=False
 
@@ -44,7 +45,7 @@ data_from_hex=OP_RETURN_hex_to_bin(data)
 if data_from_hex is not None:
 	data=data_from_hex
 
-result=OP_RETURN_store(data, testnet)
+result=OP_RETURN_store(change_address, data, testnet)
 
 if 'error' in result:
 	print('Error: '+result['error'])
