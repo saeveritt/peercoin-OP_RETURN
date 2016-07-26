@@ -28,27 +28,27 @@ from OP_RETURN import *
 
 
 if len(sys.argv)<3:
-	sys.exit(
+  sys.exit(
 '''Usage:
 python store-OP_RETURN.py <change_address> <data> <testnet (optional)>'''
-	)
+  )
 
 change_address=sys.argv[1]
 data=sys.argv[2]
 
 if len(sys.argv)>3:
-	testnet=bool(sys.argv[3])
+  testnet=bool(sys.argv[3])
 else:
-	testnet=False
+  testnet=False
 
 data_from_hex=OP_RETURN_hex_to_bin(data)
 if data_from_hex is not None:
-	data=data_from_hex
+  data=data_from_hex
 
 result=OP_RETURN_store(change_address, data, testnet)
 
 if 'error' in result:
-	print('Error: '+result['error'])
+  print('Error: '+result['error'])
 else:
-	print("TxIDs:\n"+"\n".join(result['txids'])+"\n\nRef: "+result['ref']+"\n\nWait a few seconds then check on: http://"+
-		('testnet.' if testnet else '')+'coinsecrets.org/')
+  print("TxIDs:\n"+"\n".join(result['txids'])+"\n\nRef: "+result['ref']+"\n\nWait a few seconds then check on: http://"+
+    ('testnet.' if testnet else '')+'coinsecrets.org/')
