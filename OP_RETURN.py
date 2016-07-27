@@ -93,7 +93,8 @@ def OP_RETURN_send(send_address, send_amount, metadata, testnet=False):
 
   # Build the raw transaction
 
-  change_address=OP_RETURN_bitcoin_cmd('getrawchangeaddress', testnet)
+  # change_address=OP_RETURN_bitcoin_cmd('getrawchangeaddress', testnet)
+  change_address=OP_RETURN_get_change_address(inputs_spend['inputs'])
 
   outputs={send_address: send_amount}
 
@@ -107,13 +108,12 @@ def OP_RETURN_send(send_address, send_amount, metadata, testnet=False):
   return OP_RETURN_sign_send_txn(raw_txn, testnet)
 
 
-# def OP_RETURN_store(data, testnet=False):
-def OP_RETURN_store(change_address, data, testnet=False):
+def OP_RETURN_store(data, testnet=False):
   # Data is stored in OP_RETURNs within a series of chained transactions.
   # If the OP_RETURN is followed by another output, the data continues in the transaction spending that output.
   # When the OP_RETURN is the last output, this also signifies the end of the data.
 
-  # Validate parameters and get change address
+  # Validate parameters
 
   if not OP_RETURN_bitcoin_check(testnet):
     return {'error': 'Please check Bitcoin Core is running and OP_RETURN_BITCOIN_* constants are set correctly'}
@@ -125,8 +125,6 @@ def OP_RETURN_store(change_address, data, testnet=False):
   if data_len==0:
     return {'error': 'Some data is required to be stored'}
 
-  # change_address=OP_RETURN_bitcoin_cmd('getrawchangeaddress', testnet)
-
   # Calculate amounts and choose first inputs to use
 
   output_amount=OP_RETURN_BTC_FEE*int((data_len+OP_RETURN_MAX_BYTES-1)/OP_RETURN_MAX_BYTES) # number of transactions required
@@ -137,6 +135,11 @@ def OP_RETURN_store(change_address, data, testnet=False):
 
   inputs=inputs_spend['inputs']
   input_amount=inputs_spend['total']
+
+  # Get the change_address
+
+  # change_address=OP_RETURN_bitcoin_cmd('getrawchangeaddress', testnet)
+  change_address=OP_RETURN_get_change_address(inputs_spend['inputs'])
 
   # Find the current blockchain height and mempool txids
 
@@ -302,6 +305,7 @@ def OP_RETURN_select_inputs(total_amount, testnet):
   # List and sort unspent inputs by priority
 
   unspent_inputs=OP_RETURN_bitcoin_cmd('listunspent', testnet, 0)
+
   if not isinstance(unspent_inputs, list):
     return {'error': 'Could not retrieve list of unspent inputs'}
 
@@ -329,6 +333,8 @@ def OP_RETURN_select_inputs(total_amount, testnet):
     'total': input_amount,
   }
 
+def OP_RETURN_get_change_address(inputs):
+  return inputs[0]['address']
 
 def OP_RETURN_create_txn(inputs, outputs, metadata, metadata_pos, testnet):
   raw_txn=OP_RETURN_bitcoin_cmd('createrawtransaction', testnet, inputs, outputs)

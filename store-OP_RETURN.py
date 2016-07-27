@@ -28,24 +28,23 @@ import sys, string
 from OP_RETURN import *
 
 
-if len(sys.argv)<3:
+if len(sys.argv)<2:
   sys.exit(
 '''Usage:
-python store-OP_RETURN.py <change_address> <data> <testnet (optional)>
+python store-OP_RETURN.py <data> <testnet (optional)>
 
 <data> can be hex-encoded, a utf-8 or binary string.
 The data will be stored in the respective binary representation.
 
 To store the contents of a file, use:
-python store-OP_RETURN.py <change_address> "$(cat <filepath>)" <testnet (optional)>
+python store-OP_RETURN.py "$(cat <filepath>)" <testnet (optional)>
 '''
   )
 
-change_address=sys.argv[1]
-data=sys.argv[2]
+data=sys.argv[1]
 
-if len(sys.argv)>3:
-  testnet=bool(sys.argv[3])
+if len(sys.argv)>2:
+  testnet=bool(sys.argv[2])
 else:
   testnet=False
 
@@ -53,7 +52,7 @@ data_from_hex=OP_RETURN_hex_to_bin(data)
 if data_from_hex is not None:
   data=data_from_hex
 
-result=OP_RETURN_store(change_address, data, testnet)
+result=OP_RETURN_store(data, testnet)
 
 if 'error' in result:
   print('Error: '+result['error'])
