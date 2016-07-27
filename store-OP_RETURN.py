@@ -30,7 +30,14 @@ from OP_RETURN import *
 if len(sys.argv)<3:
   sys.exit(
 '''Usage:
-python store-OP_RETURN.py <change_address> <data> <testnet (optional)>'''
+python store-OP_RETURN.py <change_address> <data> <testnet (optional)>
+
+<data> can be hex-encoded, a utf-8 string or binary.
+The data will be stored in binary form.
+
+To store the contents of a file, use:
+python store-OP_RETURN.py <change_address> "$(cat <filepath>)" <testnet (optional)>
+'''
   )
 
 change_address=sys.argv[1]
