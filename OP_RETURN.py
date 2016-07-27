@@ -1,8 +1,9 @@
 # OP_RETURN.py
 #
-# Python script to generate and retrieve OP_RETURN bitcoin transactions
+# Python script to generate and retrieve OP_RETURN peercoin transactions
 #
 # Copyright (c) Coin Sciences Ltd
+# modified by hrobeers to work with ppcoin v0.5.4
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -649,6 +650,7 @@ def OP_RETURN_unpack_txn_buffer(buffer):
   }
 
   txn['version']=buffer.shift_unpack(4, '<L') # small-endian 32-bits
+  # peercoin: 4 byte timestamp https://wiki.peercointalk.org/index.php?title=Transactions
   txn['timestamp']=buffer.shift_unpack(4, '<L') # small-endian 32-bits
 
   inputs=buffer.shift_varint()
@@ -726,6 +728,7 @@ def OP_RETURN_pack_txn(txn):
   binary=b''
 
   binary+=struct.pack('<L', txn['version'])
+  # peercoin: 4 byte timestamp https://wiki.peercointalk.org/index.php?title=Transactions
   binary+=struct.pack('<L', txn['timestamp'])
 
   binary+=OP_RETURN_pack_varint(len(txn['vin']))

@@ -3,6 +3,7 @@
 # CLI wrapper for OP_RETURN.py to store data using OP_RETURNs
 #
 # Copyright (c) Coin Sciences Ltd
+# modified by hrobeers to work with ppcoin v0.5.4
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -32,8 +33,8 @@ if len(sys.argv)<3:
 '''Usage:
 python store-OP_RETURN.py <change_address> <data> <testnet (optional)>
 
-<data> can be hex-encoded, a utf-8 string or binary.
-The data will be stored in binary form.
+<data> can be hex-encoded, a utf-8 or binary string.
+The data will be stored in the respective binary representation.
 
 To store the contents of a file, use:
 python store-OP_RETURN.py <change_address> "$(cat <filepath>)" <testnet (optional)>
