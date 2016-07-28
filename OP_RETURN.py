@@ -51,7 +51,8 @@ else:
 OP_RETURN_BTC_FEE=0.01 # BTC fee to pay per transaction
 OP_RETURN_BTC_DUST=0.00001 # omit BTC outputs smaller than this
 
-OP_RETURN_MAX_BYTES=80 # maximum bytes in an OP_RETURN (40 as of Bitcoin 0.10)
+OP_RETURN_MAX_BYTES=80 # maximum bytes in an OP_RETURN (40 as of Bitcoin 0.10) this lib can handle up to 65536 bytes
+OP_RETURN_STORE_SPLIT=False # Splitting of data if longer than OP_RETURN_MAX_BYTES
 OP_RETURN_MAX_BLOCKS=10 # maximum number of blocks to try when retrieving data
 
 OP_RETURN_NET_TIMEOUT=10 # how long to time out (in seconds) when communicating with bitcoin node
@@ -145,6 +146,11 @@ def OP_RETURN_store(data, testnet=False):
 
   height=int(OP_RETURN_bitcoin_cmd('getblockcount', testnet))
   avoid_txids=OP_RETURN_bitcoin_cmd('getrawmempool', testnet)
+
+  # Check if output splitting is supported
+
+  if not OP_RETURN_STORE_SPLIT and data_len > OP_RETURN_MAX_BYTES:
+    return {'error': 'Data too large & splitting disabled, set OP_RETURN_STORE_SPLIT=True to split the data over multiple transactions.'}
 
   # Loop to build and send transactions
 
