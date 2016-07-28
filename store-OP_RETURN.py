@@ -33,8 +33,9 @@ if len(sys.argv)<2:
 '''Usage:
 python store-OP_RETURN.py <data> <testnet (optional)>
 
-<data> can be hex-encoded, a utf-8 or binary string.
-The data will be stored in the respective binary representation.
+<data> is a hex string or raw string containing the OP_RETURN metadata
+       (auto-detection: treated as a hex string if it is a valid one)
+<testnet> should be 1 to use the peercoin testnet, otherwise it can be omitted
 
 To store the contents of a file, use:
 python store-OP_RETURN.py "$(cat <filepath>)" <testnet (optional)>
