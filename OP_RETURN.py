@@ -37,16 +37,16 @@ except NameError:
 
 # User-defined quasi-constants
 
-OP_RETURN_BITCOIN_IP='127.0.0.1' # IP address of your bitcoin node
+OP_RETURN_BITCOIN_IP='127.0.0.1' # IP address of your peercoin node
 OP_RETURN_BITCOIN_USE_CMD=False # use command-line instead of JSON-RPC?
 
 if OP_RETURN_BITCOIN_USE_CMD:
-  OP_RETURN_BITCOIN_PATH='/usr/bin/bitcoin-cli' # path to bitcoin-cli executable on this server
+  OP_RETURN_BITCOIN_PATH='/usr/bin/ppcoind' # path to ppcoind executable on this server
 
 else:
-  OP_RETURN_BITCOIN_PORT='8333' # leave empty to use default port for mainnet/testnet
-  OP_RETURN_BITCOIN_USER='experimental' # leave empty to read from ~/.bitcoin/bitcoin.conf (Unix only)
-  OP_RETURN_BITCOIN_PASSWORD='experimental' # leave empty to read from ~/.bitcoin/bitcoin.conf (Unix only)
+  OP_RETURN_BITCOIN_PORT='' # leave empty to use default port for mainnet/testnet
+  OP_RETURN_BITCOIN_USER='' # leave empty to read from ~/.ppcoin/ppcoin.conf (Unix only)
+  OP_RETURN_BITCOIN_PASSWORD='' # leave empty to read from ~/.ppcoin/ppcoin.conf (Unix only)
 
 OP_RETURN_BTC_FEE=0.01 # BTC fee to pay per transaction
 OP_RETURN_BTC_DUST=0.00001 # omit BTC outputs smaller than this
@@ -55,7 +55,7 @@ OP_RETURN_MAX_BYTES=80 # maximum bytes in an OP_RETURN (40 as of Bitcoin 0.10) t
 OP_RETURN_STORE_SPLIT=False # Splitting of data if longer than OP_RETURN_MAX_BYTES
 OP_RETURN_MAX_BLOCKS=10 # maximum number of blocks to try when retrieving data
 
-OP_RETURN_NET_TIMEOUT=10 # how long to time out (in seconds) when communicating with bitcoin node
+OP_RETURN_NET_TIMEOUT=10 # how long to time out (in seconds) when communicating with peercoin node
 
 
 # User-facing functions
@@ -455,7 +455,7 @@ def OP_RETURN_bitcoin_cmd(command, testnet, *args): # more params are read from 
     password=OP_RETURN_BITCOIN_PASSWORD
 
     if not (len(port) and len(user) and len(password)):
-      conf_lines=open(os.path.expanduser('~')+'/.bitcoin/bitcoin.conf').readlines()
+      conf_lines=open(os.path.expanduser('~')+'/.ppcoin/ppcoin.conf').readlines()
 
       for conf_line in conf_lines:
         parts=conf_line.strip().split('=', 1) # up to 2 parts
