@@ -24,7 +24,7 @@
 # THE SOFTWARE.
 
 
-import subprocess, json, time, random, os.path, binascii, struct, string, re, hashlib, math
+import subprocess, base64, json, time, random, os.path, binascii, struct, string, re, hashlib, math
 
 
 # Python 2-3 compatibility logic
@@ -473,7 +473,7 @@ def OP_RETURN_bitcoin_cmd(command, testnet, *args): # more params are read from 
           password=parts[1]
 
     if not len(port):
-      port=18332 if testnet else 8332
+      port=19902 if testnet else 9902
 
     if not (len(user) and len(password)):
       return None # no point trying in this case
@@ -481,18 +481,15 @@ def OP_RETURN_bitcoin_cmd(command, testnet, *args): # more params are read from 
     url='http://'+OP_RETURN_BITCOIN_IP+':'+str(port)+'/'
 
     try:
-      from urllib2 import HTTPPasswordMgrWithDefaultRealm, HTTPBasicAuthHandler, build_opener, install_opener, urlopen
+      from urllib2 import Request, urlopen
     except ImportError:
-      from urllib.request import HTTPPasswordMgrWithDefaultRealm, HTTPBasicAuthHandler, build_opener, install_opener, urlopen
+      from urllib.request import Request, urlopen
 
-    passman=HTTPPasswordMgrWithDefaultRealm()
-    passman.add_password(None, url, user, password)
-    auth_handler=HTTPBasicAuthHandler(passman)
-    opener=build_opener(auth_handler)
-    install_opener(opener)
-    raw_result=urlopen(url, json.dumps(request).encode('utf-8'), OP_RETURN_NET_TIMEOUT).read()
-
-    result_array=json.loads(raw_result.decode('utf-8'))
+    requests = Request(url,json.dumps(request).encode('utf-8'))
+    base64string = base64.encodestring(('%s:%s' % (user,password)).encode('utf-8')).decode().replace('\n','')
+    requests.add_header('Authorization','Basic %s' % base64string)
+    result = urlopen(requests).read()
+    result_array=json.loads(result.decode('utf-8'))
     result=result_array['result']
 
   return result
