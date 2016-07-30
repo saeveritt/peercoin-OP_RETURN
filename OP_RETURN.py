@@ -24,7 +24,7 @@
 # THE SOFTWARE.
 
 
-import subprocess, json, time, random, os.path, binascii, struct, string, re, hashlib
+import subprocess, json, time, random, os.path, binascii, struct, string, re, hashlib, math
 
 
 # Python 2-3 compatibility logic
@@ -370,6 +370,11 @@ def OP_RETURN_sign_send_txn(raw_txn, testnet):
   signed_txn=OP_RETURN_bitcoin_cmd('signrawtransaction', testnet, raw_txn)
   if not ('complete' in signed_txn and signed_txn['complete']):
     return {'error': 'Could not sign the transaction'}
+
+  # Check if the peercoin transaction fee is sufficient to cover the txn (0.01PPC/kb)
+  txn_size = len(signed_txn['hex'])/2 # 2 hex chars per byte
+  if (txn_size/1024 > OP_RETURN_BTC_FEE*100):
+    return {'error': 'Transaction fee too low to be accepted on the peercoin chain. Required fee: ' + str(math.ceil(txn_size/1024) * 0.01) + ' PPC'}
 
   send_txid=OP_RETURN_bitcoin_cmd('sendrawtransaction', testnet, signed_txn['hex'])
   if not (isinstance(send_txid, basestring) and len(send_txid)==64):
