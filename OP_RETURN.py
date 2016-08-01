@@ -376,7 +376,7 @@ def OP_RETURN_sign_send_txn(raw_txn, testnet):
   if (txn_size/1024 > OP_RETURN_BTC_FEE*100):
     return {'error': 'Transaction fee too low to be accepted on the peercoin chain. Required fee: ' + str(math.ceil(txn_size/1024) * 0.01) + ' PPC'}
 
-  send_txid=OP_RETURN_bitcoin_cmd('sendrawtransaction', testnet, signed_txn['hex'])
+  send_txid=OP_RETURN_bitcoin_cmd('sendrawtransaction', testnet, signed_txn['hex'], 1)
   if not (isinstance(send_txid, basestring) and len(send_txid)==64):
     return {'error': 'Could not send the transaction'}
 
