@@ -373,7 +373,7 @@ def OP_RETURN_sign_send_txn(raw_txn, testnet):
 
   # Check if the peercoin transaction fee is sufficient to cover the txn (0.01PPC/kb)
   txn_size = len(signed_txn['hex'])/2 # 2 hex chars per byte
-  if (txn_size/1024 > OP_RETURN_BTC_FEE*100):
+  if (txn_size/1000 > OP_RETURN_BTC_FEE*100):
     return {'error': 'Transaction fee too low to be accepted on the peercoin chain. Required fee: ' + str(math.ceil(txn_size/1024) * 0.01) + ' PPC'}
 
   send_txid=OP_RETURN_bitcoin_cmd('sendrawtransaction', testnet, signed_txn['hex'], 1)
@@ -689,7 +689,7 @@ def OP_RETURN_unpack_txn_buffer(buffer):
   for _ in range(outputs):
     output={}
 
-    output['value']=float(buffer.shift_uint64())/100000000
+    output['value']=float(buffer.shift_uint64())/1000000
     length=buffer.shift_varint()
     output['scriptPubKey']=OP_RETURN_bin_to_hex(buffer.shift(length))
 
@@ -757,7 +757,7 @@ def OP_RETURN_pack_txn(txn):
   binary+=OP_RETURN_pack_varint(len(txn['vout']))
 
   for output in txn['vout']:
-    binary+=OP_RETURN_pack_uint64(int(round(output['value']*100000000)))
+    binary+=OP_RETURN_pack_uint64(int(round(output['value']*1000000)))
     binary+=OP_RETURN_pack_varint(int(len(output['scriptPubKey'])/2)) # divide by 2 because it is currently in hex
     binary+=OP_RETURN_hex_to_bin(output['scriptPubKey'])
 
