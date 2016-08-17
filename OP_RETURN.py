@@ -354,9 +354,9 @@ def OP_RETURN_create_txn(inputs, outputs, metadata, metadata_pos, testnet):
   elif metadata_len<256:
     payload=b'\x4c'+bytearray((metadata_len,))+metadata # OP_PUSHDATA1 format
   elif metadata_len<65536:
-    payload=b'\x4d'+struct.pack('<H',length)+metadata # OP_PUSHDATA2 format
+    payload=b'\x4d'+struct.pack('<H',metadata_len)+metadata # OP_PUSHDATA2 format
   else:
-    payload=b'\x4e'+struct.pack('<L',length)+metadata # OP_PUSHDATA4 format
+    payload=b'\x4e'+struct.pack('<L',metadata_len)+metadata # OP_PUSHDATA4 format
 
   metadata_pos=min(max(0, metadata_pos), len(txn_unpacked['vout'])) # constrain to valid values
 
