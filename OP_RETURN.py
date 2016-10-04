@@ -350,7 +350,7 @@ def OP_RETURN_sign_send_txn(raw_txn, testnet):
     return {'txid': str(send_txid)}
 
 def OP_RETURN_list_mempool_txns(testnet):
-    return OP_RETURN_bitcoin_cmd('getrawmempool', testnet)
+    return node.getrawmempool()
 
 def OP_RETURN_get_mempool_txn(txid, testnet):
     raw_txn=OP_RETURN_bitcoin_cmd('getrawtransaction', testnet, txid)
@@ -386,8 +386,7 @@ def OP_RETURN_get_block_txns(height, testnet):
 
 # Talking to ppcoind
 def OP_RETURN_bitcoin_check(testnet):
-
-    info=OP_RETURN_bitcoin_cmd('getinfo', testnet)
+    info=node.getinfo()
     return isinstance(info, dict) and 'balance' in info
 
 def OP_RETURN_bitcoin_cmd(command, testnet, *args): # more params are read from here
