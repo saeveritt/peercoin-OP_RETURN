@@ -23,6 +23,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
+from peercoin_rpc import Client
+
+node = Client(username="bitcoin", password="password")
 
 import subprocess, base64, json, time, random, os.path, binascii, struct, string, re, hashlib, math
 
@@ -278,6 +281,8 @@ def OP_RETURN_retrieve(ref, max_results=1, testnet=False):
     return results
 
 # Utility functions
+def select_inputs(total_amount):
+    """list and sort inputs by priority"""
 
 def OP_RETURN_select_inputs(total_amount, testnet):
     # List and sort unspent inputs by priority
