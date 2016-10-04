@@ -280,39 +280,29 @@ def OP_RETURN_retrieve(ref, max_results=1, testnet=False):
     
     return results
 
+
 # Utility functions
-def select_inputs(total_amount):
-    """list and sort inputs by priority"""
 
-def OP_RETURN_select_inputs(total_amount, testnet):
-    # List and sort unspent inputs by priority
+def OP_RETURN_select_inputs(total_amount, testnet): ## drop-in replacement for former OP_RETURN_select_inputs
+    '''finds apropriate utxo's to include in rawtx, while being careful
+    to never spend old transactions with a lot of coin age'''
+    '''Argument is intiger, returns list of apropriate transactions'''
+    from operator import itemgetter
     
-    unspent_inputs=OP_RETURN_bitcoin_cmd('listunspent', testnet, 0)
-    
-    if not isinstance(unspent_inputs, list):
-        return {'error': 'Could not retrieve list of unspent inputs'}
-    
-    unspent_inputs.sort(key=lambda unspent_input: unspent_input['amount'] * unspent_input['confirmations'], reverse=True)
-    
-    # Identify which inputs should be spent
-    inputs_spend=[]
-    input_amount=0
-    
-    for unspent_input in unspent_inputs:
-        inputs_spend.append(unspent_input)
-
-        input_amount += unspent_input['amount']
-        if input_amount >= total_amount:
-            break # stop when we have enough
-    
-        if input_amount < total_amount:
-            return {'error': 'Not enough funds are available to cover the amount and fee'}
-    
-    # Return the successful result
-    return {
-        'inputs': inputs_spend,
-        'total': input_amount,
-    }
+    txids = []
+    utxo_sum = float(-0.01) ## starts from negative due to fee
+    for i in sorted(node.listunspent(), key=itemgetter('confirmations')):
+        if i["txid"] not in txids:
+            txids.append(i["txid"])
+            utxo_sum = utxo_sum + float(i["amount"])
+            if utxo_sum >= total_amount:
+                #return txids
+                return {
+                    'inputs': txids,
+                    'total': utxo_sum,
+                }
+            else:
+                raise ValueError("Not enough founds.")
 
 def OP_RETURN_get_change_address(inputs):
     return inputs[0]['address']
