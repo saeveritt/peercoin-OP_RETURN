@@ -365,10 +365,11 @@ def OP_RETURN_get_mempool_txns(testnet):
 
     return txns
 
-def OP_RETURN_get_raw_block(height, testnet):
-    block_hash=OP_RETURN_bitcoin_cmd('getblockhash', testnet, height)
-    if not (isinstance(block_hash, basestring) and len(block_hash)==64):
-        return {'error': 'Block at height '+str(height)+' not found'}
+def OP_RETURN_get_raw_block(block_height, testnet):
+
+    block_hash = node.getblockhash(block_height)
+    if not (isinstance(block_hash, basestring) and len(block_hash) == 64):
+        return {'error': 'Block at height ' + str(height) + ' not found'}
 
     return {
         'block': OP_RETURN_hex_to_bin(OP_RETURN_bitcoin_cmd('getblock', testnet, block_hash, False))
