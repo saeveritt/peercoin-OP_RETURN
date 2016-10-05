@@ -353,7 +353,7 @@ def OP_RETURN_list_mempool_txns(testnet):
     return node.getrawmempool()
 
 def OP_RETURN_get_mempool_txn(txid, testnet):
-    raw_txn=OP_RETURN_bitcoin_cmd('getrawtransaction', testnet, txid)
+    raw_txn = node.getrawtransaction(txid)
     return OP_RETURN_unpack_txn(OP_RETURN_hex_to_bin(raw_txn))
 
 def OP_RETURN_get_mempool_txns(testnet):
