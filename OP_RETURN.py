@@ -334,7 +334,7 @@ def OP_RETURN_create_txn(inputs, outputs, metadata, metadata_pos, testnet):
 
 def OP_RETURN_sign_send_txn(raw_txn, testnet):
 
-    signed_txn=OP_RETURN_bitcoin_cmd('signrawtransaction', testnet, raw_txn)
+    signed_txn = node.signrawtransaction(raw_txn)
     if not ('complete' in signed_txn and signed_txn['complete']):
         return {'error': 'Could not sign the transaction'}
 
@@ -343,7 +343,7 @@ def OP_RETURN_sign_send_txn(raw_txn, testnet):
     if (txn_size/1000 > OP_RETURN_BTC_FEE*100):
         return {'error': 'Transaction fee too low to be accepted on the peercoin chain. Required fee: ' + str(math.ceil(txn_size/1024) * 0.01) + ' PPC'}
 
-    send_txid=OP_RETURN_bitcoin_cmd('sendrawtransaction', testnet, signed_txn['hex'], 1)
+    send_txid = node.sendrawtransaction(signed_txn["hex"])
     if not (isinstance(send_txid, basestring) and len(send_txid)==64):
         return {'error': 'Could not send the transaction'}
 
