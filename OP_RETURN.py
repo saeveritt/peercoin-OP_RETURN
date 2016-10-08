@@ -303,16 +303,9 @@ class Utils:
         else:
             data = b'\x4c' + struct.pack('<L',len(metadata)) + metadata # OP_PUSHDATA4 format
         
-        medadata_pos = min(max(0, metadata_pos)), len(txn_unpacked["vout"]) # constrain to valid values
-
-        #txn_unpacked["vout"].append(
-        #    {"value": 0, "scriptPubKey": "6a" + OP_RETURN_bin_to_hex(data)
-        #    }) 
-
-        txn_unpacked["vout"]["metadata_pos:medadata_pos"] = [{
-            "value": 0,
-            "scriptPubKey": "6a" + OP_RETURN_bin_to_hex(data) # here is the OP_RETURN
-        }]
+        txn_unpacked["vout"].append(
+            {"value": 0, "scriptPubKey": "6a" + OP_RETURN_bin_to_hex(data)
+            })
 
         return OP_RETURN_bin_to_hex(OP_RETURN_pack_txn(txn_unpacked))
     
@@ -362,7 +355,7 @@ class Utils:
 
         return {
             'block': OP_RETURN_hex_to_bin(node.getblock(block_hash))
-    }
+        }
 
     @classmethod
     def OP_RETURN_get_block_txns(block_height):
