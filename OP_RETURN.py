@@ -25,7 +25,7 @@
 
 from peercoin_rpc import Client
 
-node = Client(testnet=True, username="bitcoin", password="password")
+node = Client(testnet=True)
 
 import subprocess, base64, json, time, random, os.path, binascii, struct, string, re, hashlib, math
 
@@ -65,12 +65,12 @@ def OP_RETURN_send(send_address, send_amount, metadata):
     # Calculate amounts and choose inputs
     output_amount = send_amount + OP_RETURN_BTC_FEE
     
-    inputs_spend = Utils.OP_RETURN_select_inputs(output_amount, testnet)
+    inputs_spend = Utils.OP_RETURN_select_inputs(output_amount)
     
     if 'error' in inputs_spend:
         return {'error': inputs_spend['error']}
     
-    change_amount=inputs_spend['total']-output_amount
+    change_amount = inputs_spend['total'] - output_amount
     
     ## Build the raw transaction
     change_address = Utils.OP_RETURN_get_change_address(inputs_spend['inputs'])
@@ -98,7 +98,7 @@ def OP_RETURN_store(data, testnet=False):
     # Calculate amounts and choose first inputs to use
     output_amount = OP_RETURN_BTC_FEE * int((data_len+OP_RETURN_MAX_BYTES-1) / OP_RETURN_MAX_BYTES) # number of transactions required
     
-    inputs_spend = Utils.OP_RETURN_select_inputs(output_amount, testnet)
+    inputs_spend = Utils.OP_RETURN_select_inputs(output_amount)
     if 'error' in inputs_spend:
         return {'error': inputs_spend['error']}
     
@@ -262,7 +262,7 @@ def OP_RETURN_retrieve(ref, max_results=1, testnet=False):
 class Utils:
 
     @classmethod
-    def OP_RETURN_select_inputs(cls, total_amount, testnet): ## drop-in replacement for former OP_RETURN_select_inputs
+    def OP_RETURN_select_inputs(cls, total_amount): ## drop-in replacement for former OP_RETURN_select_inputs
         '''finds apropriate utxo's to include in rawtx, while being careful
         to never spend old transactions with a lot of coin age'''
         '''Argument is intiger, returns list of apropriate transactions'''
@@ -285,7 +285,10 @@ class Utils:
     
     @classmethod
     def OP_RETURN_get_change_address(cls, inputs):
-        return inputs[0]['address']
+        try:
+            return inputs[0]['address']
+        except:
+            return node.getnewaddress()
     
     @classmethod
     def OP_RETURN_create_txn(cls, inputs, outputs, metadata, metadata_pos):
