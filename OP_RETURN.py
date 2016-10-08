@@ -286,7 +286,7 @@ class Utils:
         except:
             return node.getnewaddress()
     
-     @classmethod
+    @classmethod
     def OP_RETURN_create_txn(cls, inputs, outputs, metadata):
 
         raw_txn = node.createrawtransaction(inputs, outputs)
