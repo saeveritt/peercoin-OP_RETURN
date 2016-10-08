@@ -286,26 +286,25 @@ class Utils:
         except:
             return node.getnewaddress()
     
-    @classmethod
-    def OP_RETURN_create_txn(cls, inputs, outputs, metadata, metadata_pos):
+     @classmethod
+    def OP_RETURN_create_txn(cls, inputs, outputs, metadata):
 
         raw_txn = node.createrawtransaction(inputs, outputs)
         txn_unpacked = OP_RETURN_unpack_txn(OP_RETURN_hex_to_bin(raw_txn))
 
         if not metadata:
             raise ValueError
-        elif len(metadata) <= 75:
-            data = bytearray(len(metadata)) + metadata
-        elif len(metadata) < 256:
-            data = b'\x4c' + bytearray(len(metadata)) + metadata ## OP_PUSHDATA1 format
-        elif len(metadata) < 65536:
-            data = b'\x4c' + struct.pack('<H',len(metadata)) + metadata # OP_PUSHDATA2 format
+        elif len(metadata) <= 252:  # 1 byte used for variable int , format uint_8
+            data = b'\x4c' + bytearray(len(metadata)) + metadata # OP_PUSHDATA1 format
+        elif len(metadata) <= 65536:
+            data = b'\x4d' + struct.pack('<H',len(metadata)) + metadata # OP_PUSHDATA2 format
+        elif len(metadata) <= 4294967295:
+            data = b'\x4e' + struct.pack('<L',len(metadata)) + metadata # OP_PUSHDATA4 format
         else:
-            data = b'\x4c' + struct.pack('<L',len(metadata)) + metadata # OP_PUSHDATA4 format
+            return {'error': 'Metadata exceeds maximum length'}
         
         txn_unpacked["vout"].append(
-            {"value": 0, "scriptPubKey": "6a" + OP_RETURN_bin_to_hex(data)
-            })
+            {"value": 0, "scriptPubKey": "6a" + OP_RETURN_bin_to_hex(data)})
 
         return OP_RETURN_bin_to_hex(OP_RETURN_pack_txn(txn_unpacked))
     
