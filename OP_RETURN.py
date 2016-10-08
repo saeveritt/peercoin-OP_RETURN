@@ -25,7 +25,7 @@
 
 from peercoin_rpc import Client
 
-node = Client(username="bitcoin", password="password")
+node = Client(testnet=True, username="bitcoin", password="password")
 
 import subprocess, base64, json, time, random, os.path, binascii, struct, string, re, hashlib, math
 
@@ -34,18 +34,6 @@ try:
     basestring
 except NameError:
     basestring = str
-
-# User-defined quasi-constants
-OP_RETURN_BITCOIN_IP='127.0.0.1' # IP address of your peercoin node
-OP_RETURN_BITCOIN_USE_CMD=False # use command-line instead of JSON-RPC?
-
-if OP_RETURN_BITCOIN_USE_CMD:
-    OP_RETURN_BITCOIN_PATH='/usr/bin/ppcoind' # path to ppcoind executable on this server
-
-else:
-    OP_RETURN_BITCOIN_PORT='' # leave empty to use default port for mainnet/testnet
-    OP_RETURN_BITCOIN_USER='' # leave empty to read from ~/.ppcoin/ppcoin.conf (Unix only)
-    OP_RETURN_BITCOIN_PASSWORD='' # leave empty to read from ~/.ppcoin/ppcoin.conf (Unix only)
 
 OP_RETURN_BTC_FEE=0.01 # BTC fee to pay per transaction
 OP_RETURN_BTC_DUST=0.00001 # omit BTC outputs smaller than this
@@ -58,10 +46,10 @@ OP_RETURN_NET_TIMEOUT=10 # how long to time out (in seconds) when communicating 
 
 # User-facing functions
 
-def OP_RETURN_send(send_address, send_amount, metadata, testnet=False):
+def OP_RETURN_send(send_address, send_amount, metadata):
     # Validate some parameters
     
-    result=OP_RETURN_bitcoin_cmd('validateaddress', testnet, send_address)
+    result=node.validateaddress(send_address)
     if not ('isvalid' in result and result['isvalid']):
         return {'error': 'Send address could not be validated: ' + send_address}
     
@@ -85,7 +73,6 @@ def OP_RETURN_send(send_address, send_amount, metadata, testnet=False):
     change_amount=inputs_spend['total']-output_amount
     
     ## Build the raw transaction
-    # change_address=OP_RETURN_bitcoin_cmd('getrawchangeaddress', testnet)
     change_address = Utils.OP_RETURN_get_change_address(inputs_spend['inputs'])
     
     outputs={send_address: send_amount}
@@ -119,12 +106,11 @@ def OP_RETURN_store(data, testnet=False):
     input_amount=inputs_spend['total']
     
     # Get the change_address
-    # change_address=OP_RETURN_bitcoin_cmd('getrawchangeaddress', testnet)
     change_address = Utils.OP_RETURN_get_change_address(inputs_spend['inputs'])
     
     # Find the current blockchain height and mempool txids
-    height = int(OP_RETURN_bitcoin_cmd('getblockcount', testnet))
-    avoid_txids = OP_RETURN_bitcoin_cmd('getrawmempool', testnet)
+    height = int(node.getblockcount())
+    avoid_txids = node.getrawmempool()
     
     # Check if output splitting is supported
     if not OP_RETURN_STORE_SPLIT and len(data) > OP_RETURN_MAX_BYTES:
@@ -172,7 +158,7 @@ def OP_RETURN_store(data, testnet=False):
 def OP_RETURN_retrieve(ref, max_results=1, testnet=False):
     # Validate parameters and get status of Bitcoin Core
     
-    max_height = int(OP_RETURN_bitcoin_cmd('getblockcount', testnet))
+    max_height = int(node.getblockcount())
     heights=OP_RETURN_get_ref_heights(ref, max_height)
     
     if not isinstance(heights, list):
@@ -372,7 +358,7 @@ class Utils:
             return {'error': 'Block at height ' + str(height) + ' not found'}
 
         return {
-            'block': OP_RETURN_hex_to_bin(OP_RETURN_bitcoin_cmd('getblock', testnet, block_hash, False))
+            'block': OP_RETURN_hex_to_bin(node.getblock(block_hash))
     }
 
     @classmethod
@@ -384,73 +370,6 @@ class Utils:
         block=OP_RETURN_unpack_block(raw_block['block'])
 
         return block['txs']
-
-
-# Talking to ppcoind
-def OP_RETURN_bitcoin_cmd(command, testnet, *args): # more params are read from here
-    if OP_RETURN_BITCOIN_USE_CMD:
-        sub_args=[OP_RETURN_BITCOIN_PATH]
-
-        if testnet:
-            sub_args.append('-testnet')
-
-        sub_args.append(command)
-
-        for arg in args:
-            sub_args.append(json.dumps(arg) if isinstance(arg, (dict, list, tuple)) else str(arg))
-
-        raw_result=subprocess.check_output(sub_args).decode("utf-8").rstrip("\n")
-
-        try: # decode JSON if possible
-            result=json.loads(raw_result)
-        except ValueError:
-            result=raw_result
-
-    else:
-        request={
-        'id': str(time.time())+'-'+str(random.randint(100000,999999)),
-        'method': command,
-        'params': args,
-        }
-
-        port=OP_RETURN_BITCOIN_PORT
-        user=OP_RETURN_BITCOIN_USER
-        password=OP_RETURN_BITCOIN_PASSWORD
-
-        if not (len(port) and len(user) and len(password)):
-            conf_lines=open(os.path.expanduser('~')+'/.ppcoin/ppcoin.conf').readlines()
-
-        for conf_line in conf_lines:
-            parts=conf_line.strip().split('=', 1) # up to 2 parts
-
-            if (parts[0]=='rpcport') and not len(port):
-                port=int(parts[1])
-            if (parts[0]=='rpcuser') and not len(user):
-                user=parts[1]
-            if (parts[0]=='rpcpassword') and not len(password):
-                password=parts[1]
-
-        if not len(port):
-            port=19902 if testnet else 9902
-
-        if not (len(user) and len(password)):
-            return None # no point trying in this case
-
-        url='http://'+OP_RETURN_BITCOIN_IP+':'+str(port)+'/'
-
-        try:
-            from urllib2 import Request, urlopen
-        except ImportError:
-            from urllib.request import Request, urlopen
-
-        requests = Request(url,json.dumps(request).encode('utf-8'))
-        base64string = base64.encodestring(('%s:%s' % (user,password)).encode('utf-8')).decode().replace('\n','')
-        requests.add_header('Authorization','Basic %s' % base64string)
-        result = urlopen(requests).read()
-        result_array=json.loads(result.decode('utf-8'))
-        result=result_array['result']
-
-    return result
 
 # Working with data references
 
