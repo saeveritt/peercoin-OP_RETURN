@@ -47,11 +47,9 @@ OP_RETURN_NET_TIMEOUT=10 # how long to time out (in seconds) when communicating 
 # User-facing functions
 
 def OP_RETURN_send(send_address, send_amount, metadata):
-    # Validate some parameters
     
-    result=node.validateaddress(send_address)
-    if not ('isvalid' in result and result['isvalid']):
-        return {'error': 'Send address could not be validated: ' + send_address}
+    # Validate some parameters
+    assert node.validateaddress(send_address)["isvalid"] 
     
     if isinstance(metadata, basestring):
         metadata = metadata.encode('utf-8') # convert to binary string
@@ -65,19 +63,20 @@ def OP_RETURN_send(send_address, send_amount, metadata):
     # Calculate amounts and choose inputs
     output_amount = send_amount + OP_RETURN_BTC_FEE
     
-    inputs_spend = Utils.OP_RETURN_select_inputs(output_amount)
-    
-    change_amount = inputs_spend['total'] - output_amount
+    # find apropriate inputs
+    inputs = Utils.OP_RETURN_select_inputs(output_amount)
+    # change
+    change_amount = inputs['total'] - output_amount
     
     ## Build the raw transaction
-    change_address = Utils.OP_RETURN_get_change_address(inputs_spend['inputs'])
+    change_address = Utils.OP_RETURN_get_change_address(inputs['inputs'])
     
     outputs={send_address: send_amount}
     
     if change_amount>=OP_RETURN_BTC_DUST:
-        outputs[change_address]=change_amount
-    
-    raw_txn = Utils.OP_RETURN_create_txn(inputs_spend['inputs'], outputs, metadata, len(outputs))
+        outputs[change_address] = change_amount
+
+    raw_txn = Utils.OP_RETURN_create_txn(inputs['inputs'], outputs, metadata, len(outputs))
     # Sign and send the transaction, return result
     return Utils.OP_RETURN_sign_send_txn(raw_txn)
 
@@ -305,6 +304,10 @@ class Utils:
             data = b'\x4c' + struct.pack('<L',len(metadata)) + metadata # OP_PUSHDATA4 format
         
         medadata_pos = min(max(0, metadata_pos)), len(txn_unpacked["vout"]) # constrain to valid values
+
+        #txn_unpacked["vout"].append(
+        #    {"value": 0, "scriptPubKey": "6a" + OP_RETURN_bin_to_hex(data)
+        #    }) 
 
         txn_unpacked["vout"]["metadata_pos:medadata_pos"] = [{
             "value": 0,
