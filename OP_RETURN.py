@@ -67,9 +67,6 @@ def OP_RETURN_send(send_address, send_amount, metadata):
     
     inputs_spend = Utils.OP_RETURN_select_inputs(output_amount)
     
-    if 'error' in inputs_spend:
-        return {'error': inputs_spend['error']}
-    
     change_amount = inputs_spend['total'] - output_amount
     
     ## Build the raw transaction
@@ -294,7 +291,7 @@ class Utils:
     def OP_RETURN_create_txn(cls, inputs, outputs, metadata, metadata_pos):
 
         raw_txn = node.createrawtransaction(inputs, outputs)
-        txn_unpacked = OP_RETURN_unpack_tnx(OP_RETURN_hex_to_bin(raw_txn))
+        txn_unpacked = OP_RETURN_unpack_txn(OP_RETURN_hex_to_bin(raw_txn))
 
         if not metadata:
             raise ValueError
