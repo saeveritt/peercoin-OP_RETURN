@@ -44,19 +44,12 @@ if len(sys.argv) < 4:
     )
 
 dummy, send_address, send_amount, metadata = sys.argv[0:4]
-if len(sys.argv)>4:
-    testnet=bool(sys.argv[4])
-else:
-    testnet=False
 
 metadata_from_hex = OP_RETURN_hex_to_bin(metadata)
 if metadata_from_hex is not None:
     metadata=metadata_from_hex
 
-result = OP_RETURN_send(send_address, float(send_amount), metadata, testnet)
+result = OP_RETURN_send(send_address, float(send_amount), metadata)
 
 if 'error' in result:
     print('Error: '+result['error'])
-else:
-    print('TxID: '+result['txid']+'\nWait a few seconds then check on: http://'+
-      ('testnet.' if testnet else '')+'coinsecrets.org/')
