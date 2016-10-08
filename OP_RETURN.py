@@ -60,9 +60,6 @@ OP_RETURN_NET_TIMEOUT=10 # how long to time out (in seconds) when communicating 
 
 def OP_RETURN_send(send_address, send_amount, metadata, testnet=False):
     # Validate some parameters
-
-    if not OP_RETURN_bitcoin_check(testnet):
-        return {'error': 'Please check Bitcoin Core is running and OP_RETURN_BITCOIN_* constants are set correctly'}
     
     result=OP_RETURN_bitcoin_cmd('validateaddress', testnet, send_address)
     if not ('isvalid' in result and result['isvalid']):
@@ -80,7 +77,7 @@ def OP_RETURN_send(send_address, send_amount, metadata, testnet=False):
     # Calculate amounts and choose inputs
     output_amount = send_amount + OP_RETURN_BTC_FEE
     
-    inputs_spend=OP_RETURN_select_inputs(output_amount, testnet)
+    inputs_spend = Utils.OP_RETURN_select_inputs(output_amount, testnet)
     
     if 'error' in inputs_spend:
         return {'error': inputs_spend['error']}
@@ -89,25 +86,21 @@ def OP_RETURN_send(send_address, send_amount, metadata, testnet=False):
     
     ## Build the raw transaction
     # change_address=OP_RETURN_bitcoin_cmd('getrawchangeaddress', testnet)
-    change_address=OP_RETURN_get_change_address(inputs_spend['inputs'])
+    change_address = Utils.OP_RETURN_get_change_address(inputs_spend['inputs'])
     
     outputs={send_address: send_amount}
     
     if change_amount>=OP_RETURN_BTC_DUST:
         outputs[change_address]=change_amount
     
-    raw_txn=OP_RETURN_create_txn(inputs_spend['inputs'], outputs, metadata, len(outputs), testnet)
+    raw_txn = Utils.OP_RETURN_create_txn(inputs_spend['inputs'], outputs, metadata, len(outputs))
     # Sign and send the transaction, return result
-    return OP_RETURN_sign_send_txn(raw_txn, testnet)
+    return Utils.OP_RETURN_sign_send_txn(raw_txn)
 
 def OP_RETURN_store(data, testnet=False):
     # Data is stored in OP_RETURNs within a series of chained transactions.
     # If the OP_RETURN is followed by another output, the data continues in the transaction spending that output.
     # When the OP_RETURN is the last output, this also signifies the end of the data.
-    
-    # Validate parameters
-    if not OP_RETURN_bitcoin_check(testnet):
-        return {'error': 'Please check Bitcoin Core is running and OP_RETURN_BITCOIN_* constants are set correctly'}
     
     if isinstance(data, basestring):
         data=data.encode('utf-8') # convert to binary string
@@ -118,7 +111,7 @@ def OP_RETURN_store(data, testnet=False):
     # Calculate amounts and choose first inputs to use
     output_amount = OP_RETURN_BTC_FEE * int((data_len+OP_RETURN_MAX_BYTES-1) / OP_RETURN_MAX_BYTES) # number of transactions required
     
-    inputs_spend=OP_RETURN_select_inputs(output_amount, testnet)
+    inputs_spend = Utils.OP_RETURN_select_inputs(output_amount, testnet)
     if 'error' in inputs_spend:
         return {'error': inputs_spend['error']}
     
@@ -127,7 +120,7 @@ def OP_RETURN_store(data, testnet=False):
     
     # Get the change_address
     # change_address=OP_RETURN_bitcoin_cmd('getrawchangeaddress', testnet)
-    change_address=OP_RETURN_get_change_address(inputs_spend['inputs'])
+    change_address = Utils.OP_RETURN_get_change_address(inputs_spend['inputs'])
     
     # Find the current blockchain height and mempool txids
     height = int(OP_RETURN_bitcoin_cmd('getblockcount', testnet))
@@ -152,9 +145,9 @@ def OP_RETURN_store(data, testnet=False):
         if change_amount>=OP_RETURN_BTC_DUST: # might be skipped for last transaction
             outputs[change_address]=change_amount
 
-        raw_txn=OP_RETURN_create_txn(inputs, outputs, metadata, len(outputs) if last_txn else 0, testnet)
+        raw_txn = Utils.OP_RETURN_create_txn(inputs, outputs, metadata, len(outputs) if last_txn else 0)
 
-        send_result=OP_RETURN_sign_send_txn(raw_txn, testnet)
+        send_result = Utils.OP_RETURN_sign_send_txn(raw_txn)
 
         # Check for errors and collect the txid
         if 'error' in send_result:
@@ -179,9 +172,6 @@ def OP_RETURN_store(data, testnet=False):
 def OP_RETURN_retrieve(ref, max_results=1, testnet=False):
     # Validate parameters and get status of Bitcoin Core
     
-    if not OP_RETURN_bitcoin_check(testnet):
-        return {'error': 'Please check Bitcoin Core is running and OP_RETURN_BITCOIN_* constants are set correctly'}
-    
     max_height = int(OP_RETURN_bitcoin_cmd('getblockcount', testnet))
     heights=OP_RETURN_get_ref_heights(ref, max_height)
     
@@ -192,8 +182,8 @@ def OP_RETURN_retrieve(ref, max_results=1, testnet=False):
     results=[]
 
     for height in heights:
-        if height==0:
-            txids=OP_RETURN_list_mempool_txns(testnet) # if mempool, only get list for now (to save RPC calls)
+        if height == 0:
+            txids = Utils.OP_RETURN_list_mempool_txns() # if mempool, only get list for now (to save RPC calls)
             txns=None
         else:
             txns=OP_RETURN_get_block_txns(height, testnet) # if block, get all fully unpacked
@@ -202,7 +192,7 @@ def OP_RETURN_retrieve(ref, max_results=1, testnet=False):
     for txid in txids:
       if OP_RETURN_match_ref_txid(ref, txid):
         if height==0:
-          txn_unpacked=OP_RETURN_get_mempool_txn(txid, testnet)
+          txn_unpacked = Utils.OP_RETURN_get_mempool_txn(txid)
         else:
           txn_unpacked=txns[txid]
 
@@ -229,7 +219,7 @@ def OP_RETURN_retrieve(ref, max_results=1, testnet=False):
           # Collect the rest of the data, if appropriate
 
           if height==0:
-            this_txns=OP_RETURN_get_mempool_txns(testnet) # now retrieve all to follow chain
+            this_txns = Utils.OP_RETURN_get_mempool_txns() # now retrieve all to follow chain
           else:
             this_txns=txns
 
@@ -262,7 +252,7 @@ def OP_RETURN_retrieve(ref, max_results=1, testnet=False):
                 this_height=try_heights.pop(0)
 
                 if this_height==0:
-                  this_txns=OP_RETURN_get_mempool_txns(testnet)
+                  this_txns = Utils.OP_RETURN_get_mempool_txns()
                 else:
                   this_txns=OP_RETURN_get_block_txns(this_height, testnet)
 
@@ -283,113 +273,120 @@ def OP_RETURN_retrieve(ref, max_results=1, testnet=False):
 
 # Utility functions
 
-def OP_RETURN_select_inputs(total_amount, testnet): ## drop-in replacement for former OP_RETURN_select_inputs
-    '''finds apropriate utxo's to include in rawtx, while being careful
-    to never spend old transactions with a lot of coin age'''
-    '''Argument is intiger, returns list of apropriate transactions'''
-    from operator import itemgetter
+class Utils:
+
+    @classmethod
+    def OP_RETURN_select_inputs(cls, total_amount, testnet): ## drop-in replacement for former OP_RETURN_select_inputs
+        '''finds apropriate utxo's to include in rawtx, while being careful
+        to never spend old transactions with a lot of coin age'''
+        '''Argument is intiger, returns list of apropriate transactions'''
+        from operator import itemgetter
+        
+        txids = []
+        utxo_sum = float(-0.01) ## starts from negative due to fee
+        for i in sorted(node.listunspent(), key=itemgetter('confirmations')):
+            if i["txid"] not in txids:
+                txids.append(i["txid"])
+                utxo_sum = utxo_sum + float(i["amount"])
+                if utxo_sum >= total_amount:
+                    #return txids
+                    return {
+                        'inputs': txids,
+                        'total': utxo_sum,
+                    }
+                else:
+                    raise ValueError("Not enough founds.")
     
-    txids = []
-    utxo_sum = float(-0.01) ## starts from negative due to fee
-    for i in sorted(node.listunspent(), key=itemgetter('confirmations')):
-        if i["txid"] not in txids:
-            txids.append(i["txid"])
-            utxo_sum = utxo_sum + float(i["amount"])
-            if utxo_sum >= total_amount:
-                #return txids
-                return {
-                    'inputs': txids,
-                    'total': utxo_sum,
-                }
-            else:
-                raise ValueError("Not enough founds.")
-
-def OP_RETURN_get_change_address(inputs):
-    return inputs[0]['address']
-
-def OP_RETURN_create_txn(inputs, outputs, metadata, metadata_pos, testnet):
-
-    raw_txn = OP_RETURN_bitcoin_cmd("createrawtransaction", testnet, inputs, outputs)
-    txn_unpacked = OP_RETURN_unpack_tnx(OP_RETURN_hex_to_bin(raw_txn))
-
-    if not metadata:
-        raise ValueError
-    elif len(metadata) <= 75:
-        data = bytearray(len(metadata)) + metadata
-    elif len(metadata) < 256:
-        data = b'\x4c' + bytearray(len(metadata)) + metadata ## OP_PUSHDATA1 format
-    elif len(metadata) < 65536:
-        data = b'\x4c' + struct.pack('<H',len(metadata)) + metadata # OP_PUSHDATA2 format
-    else:
-        data = b'\x4c' + struct.pack('<L',len(metadata)) + metadata # OP_PUSHDATA4 format
+    @classmethod
+    def OP_RETURN_get_change_address(cls, inputs):
+        return inputs[0]['address']
     
-    medadata_pos = min(max(0, metadata_pos)), len(txn_unpacked["vout"]) # constrain to valid values
+    @classmethod
+    def OP_RETURN_create_txn(cls, inputs, outputs, metadata, metadata_pos):
 
-    txn_unpacked["vout"]["metadata_pos:medadata_pos"] = [{
-        "value": 0,
-        "scriptPubKey": "6a" + OP_RETURN_bin_to_hex(data) # here is the OP_RETURN
-    }]
+        raw_txn = node.createrawtransaction(inputs, outputs)
+        txn_unpacked = OP_RETURN_unpack_tnx(OP_RETURN_hex_to_bin(raw_txn))
 
-    return OP_RETURN_bin_to_hex(OP_RETURN_pack_txn(txn_unpacked))
+        if not metadata:
+            raise ValueError
+        elif len(metadata) <= 75:
+            data = bytearray(len(metadata)) + metadata
+        elif len(metadata) < 256:
+            data = b'\x4c' + bytearray(len(metadata)) + metadata ## OP_PUSHDATA1 format
+        elif len(metadata) < 65536:
+            data = b'\x4c' + struct.pack('<H',len(metadata)) + metadata # OP_PUSHDATA2 format
+        else:
+            data = b'\x4c' + struct.pack('<L',len(metadata)) + metadata # OP_PUSHDATA4 format
+        
+        medadata_pos = min(max(0, metadata_pos)), len(txn_unpacked["vout"]) # constrain to valid values
 
-def OP_RETURN_sign_send_txn(raw_txn, testnet):
+        txn_unpacked["vout"]["metadata_pos:medadata_pos"] = [{
+            "value": 0,
+            "scriptPubKey": "6a" + OP_RETURN_bin_to_hex(data) # here is the OP_RETURN
+        }]
 
-    signed_txn = node.signrawtransaction(raw_txn)
-    if not ('complete' in signed_txn and signed_txn['complete']):
-        return {'error': 'Could not sign the transaction'}
+        return OP_RETURN_bin_to_hex(OP_RETURN_pack_txn(txn_unpacked))
+    
+    @classmethod
+    def OP_RETURN_sign_send_txn(cls, raw_txn):
 
-    # Check if the peercoin transaction fee is sufficient to cover the txn (0.01PPC/kb)
-    txn_size = len(signed_txn['hex'])/2 # 2 hex chars per byte
-    if (txn_size/1000 > OP_RETURN_BTC_FEE*100):
-        return {'error': 'Transaction fee too low to be accepted on the peercoin chain. Required fee: ' + str(math.ceil(txn_size/1024) * 0.01) + ' PPC'}
+        signed_txn = node.signrawtransaction(raw_txn)
+        if not ('complete' in signed_txn and signed_txn['complete']):
+            return {'error': 'Could not sign the transaction'}
 
-    send_txid = node.sendrawtransaction(signed_txn["hex"])
-    if not (isinstance(send_txid, basestring) and len(send_txid)==64):
-        return {'error': 'Could not send the transaction'}
+        # Check if the peercoin transaction fee is sufficient to cover the txn (0.01PPC/kb)
+        txn_size = len(signed_txn['hex'])/2 # 2 hex chars per byte
+        if (txn_size/1000 > OP_RETURN_BTC_FEE*100):
+            return {'error': 'Transaction fee too low to be accepted on the peercoin chain. Required fee: ' + str(math.ceil(txn_size/1024) * 0.01) + ' PPC'}
 
-    return {'txid': str(send_txid)}
+        send_txid = node.sendrawtransaction(signed_txn["hex"])
+        if not (isinstance(send_txid, basestring) and len(send_txid)==64):
+            return {'error': 'Could not send the transaction'}
 
-def OP_RETURN_list_mempool_txns(testnet):
-    return node.getrawmempool()
+        return {'txid': str(send_txid)}
+    
+    @classmethod
+    def OP_RETURN_list_mempool_txns(cls):
+        return node.getrawmempool()
+    
+    @classmethod
+    def OP_RETURN_get_mempool_txn(txid):
+        raw_txn = node.getrawtransaction(txid)
+        return OP_RETURN_unpack_txn(OP_RETURN_hex_to_bin(raw_txn))
+    
+    @classmethod
+    def OP_RETURN_get_mempool_txns(cls):
+        txids = cls.OP_RETURN_list_mempool_txns()
 
-def OP_RETURN_get_mempool_txn(txid, testnet):
-    raw_txn = node.getrawtransaction(txid)
-    return OP_RETURN_unpack_txn(OP_RETURN_hex_to_bin(raw_txn))
+        txns={}
+        for txid in txids:
+            txns[txid] = cls.OP_RETURN_get_mempool_txn(txid)
 
-def OP_RETURN_get_mempool_txns(testnet):
-    txids=OP_RETURN_list_mempool_txns(testnet)
+        return txns
+    
+    @classmethod
+    def OP_RETURN_get_raw_block(cls, block_height):
 
-    txns={}
-    for txid in txids:
-        txns[txid]=OP_RETURN_get_mempool_txn(txid, testnet)
+        block_hash = node.getblockhash(block_height)
+        if not (isinstance(block_hash, basestring) and len(block_hash) == 64):
+            return {'error': 'Block at height ' + str(height) + ' not found'}
 
-    return txns
-
-def OP_RETURN_get_raw_block(block_height, testnet):
-
-    block_hash = node.getblockhash(block_height)
-    if not (isinstance(block_hash, basestring) and len(block_hash) == 64):
-        return {'error': 'Block at height ' + str(height) + ' not found'}
-
-    return {
-        'block': OP_RETURN_hex_to_bin(OP_RETURN_bitcoin_cmd('getblock', testnet, block_hash, False))
+        return {
+            'block': OP_RETURN_hex_to_bin(OP_RETURN_bitcoin_cmd('getblock', testnet, block_hash, False))
     }
 
-def OP_RETURN_get_block_txns(height, testnet):
-    raw_block=OP_RETURN_get_raw_block(height, testnet)
-    if 'error' in raw_block:
-        return {'error': raw_block['error']}
+    @classmethod
+    def OP_RETURN_get_block_txns(block_height):
+        raw_block = cls.OP_RETURN_get_raw_block(block_height)
+        if 'error' in raw_block:
+            return {'error': raw_block['error']}
 
-    block=OP_RETURN_unpack_block(raw_block['block'])
+        block=OP_RETURN_unpack_block(raw_block['block'])
 
-    return block['txs']
+        return block['txs']
 
 
 # Talking to ppcoind
-def OP_RETURN_bitcoin_check(testnet):
-    info=node.getinfo()
-    return isinstance(info, dict) and 'balance' in info
-
 def OP_RETURN_bitcoin_cmd(command, testnet, *args): # more params are read from here
     if OP_RETURN_BITCOIN_USE_CMD:
         sub_args=[OP_RETURN_BITCOIN_PATH]
