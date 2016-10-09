@@ -76,7 +76,7 @@ def OP_RETURN_send(send_address, send_amount, metadata):
     if change_amount>=OP_RETURN_BTC_DUST:
         outputs[change_address] = change_amount
 
-    raw_txn = Utils.OP_RETURN_create_txn(inputs['inputs'], outputs, metadata, len(outputs))
+    raw_txn = Utils.OP_RETURN_create_txn(inputs['inputs'], outputs, metadata)
     # Sign and send the transaction, return result
     return Utils.OP_RETURN_sign_send_txn(raw_txn)
 
