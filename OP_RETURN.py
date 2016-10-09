@@ -295,7 +295,7 @@ class Utils:
         if not metadata:
             raise ValueError
         elif len(metadata) <= 252:  # 1 byte used for variable int , format uint_8
-            data = b'\x4c' + bytearray(len(metadata)) + metadata # OP_PUSHDATA1 format
+            data = b'\x4c' + struct.pack("B",len(metadata)) + metadata # OP_PUSHDATA1 format
         elif len(metadata) <= 65536:
             data = b'\x4d' + struct.pack('<H',len(metadata)) + metadata # OP_PUSHDATA2 format
         elif len(metadata) <= 4294967295:
