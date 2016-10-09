@@ -69,8 +69,6 @@ def OP_RETURN_send(send_address, send_amount, metadata):
     change_amount = total_sum - output_amount
     
     ## Build the raw transaction
-    change_address = Utils.OP_RETURN_get_change_address(inputs['inputs'])
-    
     outputs={send_address: send_amount}
     
     if change_amount>=OP_RETURN_BTC_DUST:
