@@ -27,7 +27,7 @@ from peercoin_rpc import Client
 
 node = Client(testnet=True)
 
-import subprocess, base64, json, time, random, os.path, binascii, struct, string, re, hashlib, math
+import subprocess, base64, json, time, random, os.path, binascii, struct, string, re, hashlib
 
 # Python 2-3 compatibility logic
 try:
@@ -311,6 +311,8 @@ class Utils:
     @classmethod
     def OP_RETURN_sign_send_txn(cls, raw_txn):
 
+        from math import ceil as cl
+        
         signed_txn = node.signrawtransaction(raw_txn)
         if not ('complete' in signed_txn and signed_txn['complete']):
             return {'error': 'Could not sign the transaction'}
@@ -318,7 +320,7 @@ class Utils:
         # Check if the peercoin transaction fee is sufficient to cover the txn (0.01PPC/kb)
         txn_size = len(signed_txn['hex'])/2 # 2 hex chars per byte
         if (txn_size/1000 > OP_RETURN_BTC_FEE*100):
-            return {'error': 'Transaction fee too low to be accepted on the peercoin chain. Required fee: ' + str(math.ceil(txn_size/1024) * 0.01) + ' PPC'}
+            return {'error': 'Transaction fee too low to be accepted on the peercoin chain. Required fee: ' + str(cl(txn_size/1024) * 0.01) + ' PPC'}
 
         send_txid = node.sendrawtransaction(signed_txn["hex"])
         if not (isinstance(send_txid, basestring) and len(send_txid)==64):
@@ -331,7 +333,7 @@ class Utils:
         return node.getrawmempool()
     
     @classmethod
-    def OP_RETURN_get_mempool_txn(txid):
+    def OP_RETURN_get_mempool_txn(cls, txid):
         raw_txn = node.getrawtransaction(txid)
         return OP_RETURN_unpack_txn(OP_RETURN_hex_to_bin(raw_txn))
     
@@ -357,7 +359,7 @@ class Utils:
         }
 
     @classmethod
-    def OP_RETURN_get_block_txns(block_height):
+    def OP_RETURN_get_block_txns(cls, block_height):
         raw_block = cls.OP_RETURN_get_raw_block(block_height)
         if 'error' in raw_block:
             return {'error': raw_block['error']}
