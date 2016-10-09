@@ -64,9 +64,9 @@ def OP_RETURN_send(send_address, send_amount, metadata):
     output_amount = send_amount + OP_RETURN_BTC_FEE
     
     # find apropriate inputs
-    inputs = Utils.OP_RETURN_select_inputs(output_amount)
+    inputs,total_sum, change_address = Utils.OP_RETURN_select_inputs(output_amount)
     # change
-    change_amount = inputs['total'] - output_amount
+    change_amount = total_sum - output_amount
     
     ## Build the raw transaction
     change_address = Utils.OP_RETURN_get_change_address(inputs['inputs'])
@@ -76,7 +76,7 @@ def OP_RETURN_send(send_address, send_amount, metadata):
     if change_amount>=OP_RETURN_BTC_DUST:
         outputs[change_address] = change_amount
 
-    raw_txn = Utils.OP_RETURN_create_txn(inputs['inputs'], outputs, metadata)
+    raw_txn = Utils.OP_RETURN_create_txn(inputs, outputs, metadata)
     # Sign and send the transaction, return result
     return Utils.OP_RETURN_sign_send_txn(raw_txn)
 
@@ -265,19 +265,19 @@ class Utils:
         from operator import itemgetter
         
         txids = []
+        vins = []
         utxo_sum = float(-0.01) ## starts from negative due to fee
         for i in sorted(node.listunspent(), key=itemgetter('confirmations')):
             if i["txid"] not in txids:
                 txids.append(i["txid"])
+                vins.append({"txid":i["txid"].encode(),"vout":i["vout"]})
                 utxo_sum = utxo_sum + float(i["amount"])
                 if utxo_sum >= total_amount:
                     #return txids
-                    return {
-                        'inputs': txids,
-                        'total': utxo_sum,
-                    }
+                    change_address = i["address"].encode()
+                    return vins , utxo_sum , change_address
                 else:
-                    raise ValueError("Not enough founds.")
+                    raise ValueError("Not enough funds.")
     
     @classmethod
     def OP_RETURN_get_change_address(cls, inputs):
