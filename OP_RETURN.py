@@ -27,7 +27,7 @@ from peercoin_rpc import Client
 
 node = Client(testnet=True)
 
-import subprocess, base64, json, time, random, os.path, binascii, struct, string, re, hashlib
+import base64, json, time, random, binascii, struct, string, re, hashlib
 
 # Python 2-3 compatibility logic
 try:
@@ -50,12 +50,12 @@ def send(send_address, send_amount, metadata):
     # Validate some parameters
     assert node.validateaddress(send_address)["isvalid"] 
     
-    if isinstance(metadata, basestring):
-        metadata = metadata.encode('utf-8') # convert to binary string
-    
     if not metadata:
         raise ValueError("metadata you want to write is null.")
-        
+
+    if isinstance(metadata, basestring): ## check for py/py2.7 compatibility
+        metadata = metadata.encode('utf-8') # convert to binary string
+    
     if len(metadata) > 65536:
         return {'error': 'This library only supports metadata up to 65536 bytes in size'}
     
