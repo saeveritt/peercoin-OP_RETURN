@@ -24,10 +24,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
+import argparse
 from peercoin_rpc import Client
-
-node = Client(testnet=True)
-
 import base64, json, time, random, binascii, struct, string, re, hashlib
 
 # Python 2-3 compatibility logic
@@ -687,3 +685,34 @@ def OP_RETURN_hex_to_bin(hex):
 
 def OP_RETURN_bin_to_hex(string):
     return binascii.b2a_hex(string).decode('utf-8')
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Send and recive OP_RETURNs in Peercoin transactions.')
+    #parser.add_argument("-version", help="print version.", action="store_true")
+    parser.add_argument("-auth", help="Specify username/password for Peercoin JSON-RPC interface: <username>, <password>",
+                        action="store_true")
+    parser.add_argument("-testnet", help="Operate on Peercoin testnet.", action="store_true")
+    parser.add_argument("-send", 
+                        help="<send-address> <send-amount> <message>", 
+                        nargs="*")
+args = parser.parse_args()
+
+if args.testnet:
+    node = Client(testnet=True)
+else:
+    node = Client(testnet=False)
+
+if args.testnet and args.auth:
+    node = Client(testnet=True, username=args.auth[0], password=args.auth[1])
+
+if args.auth:
+    node = Client(testnet=False, username=args.auth[0], password=args.auth[1])
+
+if args.send:
+    result = send(args.send)
+    if 'error' in result:
+        print('Error: ' + result['error'])
+    else:
+        print("Success: ", result)
+
