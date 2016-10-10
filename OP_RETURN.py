@@ -78,7 +78,7 @@ def send(send_address, send_amount, metadata):
     # Sign and send the transaction, return result
     return TX_utils.sign_send_txn(raw_txn)
 
-def OP_RETURN_store(data, testnet=False):
+def store(data):
     # Data is stored in OP_RETURNs within a series of chained transactions.
     # If the OP_RETURN is followed by another output, the data continues in the transaction spending that output.
     # When the OP_RETURN is the last output, this also signifies the end of the data.
@@ -92,15 +92,8 @@ def OP_RETURN_store(data, testnet=False):
     # Calculate amounts and choose first inputs to use
     output_amount = OP_RETURN_BTC_FEE * int((data_len+OP_RETURN_MAX_BYTES-1) / OP_RETURN_MAX_BYTES) # number of transactions required
     
-    inputs_spend = TX_utils.OP_RETURN_select_inputs(output_amount)
-    if 'error' in inputs_spend:
-        return {'error': inputs_spend['error']}
-    
-    inputs=inputs_spend['inputs']
-    input_amount=inputs_spend['total']
-    
-    # Get the change_address
-    change_address = TX_utils.OP_RETURN_get_change_address(inputs_spend['inputs'])
+    # find apropriate inputs
+    inputs, total_sum, change_address = TX_utils.select_inputs(output_amount)
     
     # Find the current blockchain height and mempool txids
     height = int(node.getblockcount())
