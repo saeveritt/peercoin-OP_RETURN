@@ -53,6 +53,9 @@ def send(send_address, send_amount, metadata):
     if isinstance(metadata, basestring):
         metadata = metadata.encode('utf-8') # convert to binary string
     
+    if not metadata:
+        raise ValueError("metadata you want to write is null.")
+        
     if len(metadata) > 65536:
         return {'error': 'This library only supports metadata up to 65536 bytes in size'}
     
