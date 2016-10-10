@@ -23,7 +23,7 @@
 # THE SOFTWARE.
 
 
-import sys, string
+import sys
 from OP_RETURN import *
 
 if len(sys.argv) < 4:
@@ -49,7 +49,9 @@ metadata_from_hex = OP_RETURN_hex_to_bin(metadata)
 if metadata_from_hex is not None:
     metadata=metadata_from_hex
 
-result = OP_RETURN_send(send_address, float(send_amount), metadata)
+result = send(send_address, float(send_amount), metadata)
 
 if 'error' in result:
     print('Error: '+result['error'])
+else:
+    print(result)
