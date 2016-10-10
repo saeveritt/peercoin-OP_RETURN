@@ -41,11 +41,11 @@ OP_RETURN_BTC_DUST=0.00001 # omit BTC outputs smaller than this
 OP_RETURN_MAX_BYTES=80 # maximum bytes in an OP_RETURN (40 as of Bitcoin 0.10) this lib can handle up to 65536 bytes
 OP_RETURN_STORE_SPLIT=False # Splitting of data if longer than OP_RETURN_MAX_BYTES
 OP_RETURN_MAX_BLOCKS=10 # maximum number of blocks to try when retrieving data
-OP_RETURN_NET_TIMEOUT=10 # how long to time out (in seconds) when communicating with peercoin node
 
 
 # User-facing functions
 def send(send_address, send_amount, metadata):
+    '''validats send_address and metadata, assembles the transaction and executes it.'''
     
     # Validate some parameters
     assert node.validateaddress(send_address)["isvalid"] 
@@ -254,11 +254,10 @@ def OP_RETURN_retrieve(ref, max_results=1, testnet=False):
 
 
 # Utility functions
-
 class Utils:
 
     @classmethod
-    def OP_RETURN_select_inputs(cls, total_amount): ## drop-in replacement for former OP_RETURN_select_inputs
+    def OP_RETURN_select_inputs(cls, total_amount):
         '''finds apropriate utxo's to include in rawtx, while being careful
         to never spend old transactions with a lot of coin age'''
         '''Argument is intiger, returns list of apropriate transactions'''
@@ -280,13 +279,6 @@ class Utils:
                     raise ValueError("Not enough funds.")
     
     @classmethod
-    def OP_RETURN_get_change_address(cls, inputs):
-        try:
-            return inputs[0]['address']
-        except:
-            return node.getnewaddress()
-    
-    @classmethod
     def OP_RETURN_create_txn(cls, inputs, outputs, metadata):
 
         raw_txn = node.createrawtransaction(inputs, outputs)
@@ -299,7 +291,7 @@ class Utils:
         elif len(metadata) <= 4294967295:
             data = b'\x4e' + struct.pack('<L',len(metadata)) + metadata # OP_PUSHDATA4 format
         else:
-            return {'error': 'Metadata exceeds maximum length'}
+            return {'error': 'metadata exceeds maximum length.'}
         
         txn_unpacked["vout"].append(
             {"value": 0, "scriptPubKey": "6a" + OP_RETURN_bin_to_hex(data)})
