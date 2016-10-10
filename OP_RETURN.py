@@ -45,8 +45,7 @@ OP_RETURN_NET_TIMEOUT=10 # how long to time out (in seconds) when communicating 
 
 
 # User-facing functions
-
-def OP_RETURN_send(send_address, send_amount, metadata):
+def send(send_address, send_amount, metadata):
     
     # Validate some parameters
     assert node.validateaddress(send_address)["isvalid"] 
@@ -64,7 +63,7 @@ def OP_RETURN_send(send_address, send_amount, metadata):
     output_amount = send_amount + OP_RETURN_BTC_FEE
     
     # find apropriate inputs
-    inputs,total_sum, change_address = Utils.OP_RETURN_select_inputs(output_amount)
+    inputs, total_sum, change_address = Utils.OP_RETURN_select_inputs(output_amount)
     # change
     change_amount = total_sum - output_amount
     
@@ -290,9 +289,7 @@ class Utils:
         raw_txn = node.createrawtransaction(inputs, outputs)
         txn_unpacked = OP_RETURN_unpack_txn(OP_RETURN_hex_to_bin(raw_txn))
 
-        if not metadata:
-            raise ValueError
-        elif len(metadata) <= 252:  # 1 byte used for variable int , format uint_8
+        if len(metadata) <= 252:  # 1 byte used for variable int , format uint_8
             data = b'\x4c' + struct.pack("B",len(metadata)) + metadata # OP_PUSHDATA1 format
         elif len(metadata) <= 65536:
             data = b'\x4d' + struct.pack('<H',len(metadata)) + metadata # OP_PUSHDATA2 format
