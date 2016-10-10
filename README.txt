@@ -4,6 +4,7 @@ Simple Python commands and libraries for using OP_RETURNs in peercoin transactio
 forked from python-OP_RETURN v2
 
 Copyright (c) Coin Sciences Ltd - http://coinsecrets.org/
+Copyright (c) peerchemist       - https://github.com/peerchemist
 Copyright (c) hrobeers          - https://github.com/hrobeers
 
 MIT License (see headers in files)

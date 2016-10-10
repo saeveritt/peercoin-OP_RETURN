@@ -3,6 +3,7 @@
 # Python script to generate and retrieve OP_RETURN peercoin transactions
 #
 # Copyright (c) Coin Sciences Ltd
+# Copyright (c) 2016 Peerchemist <peerchemist@protonmail.ch>
 # modified by hrobeers to work with ppcoin v0.5.4
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
