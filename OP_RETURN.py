@@ -142,7 +142,7 @@ def store(data):
     
     return result # Return the final result
 
-def OP_RETURN_retrieve(ref, max_results=1, testnet=False):
+def OP_RETURN_retrieve(ref, max_results=1):
     # Validate parameters and get status of Bitcoin Core
     
     max_height = int(node.getblockcount())
@@ -163,13 +163,13 @@ def OP_RETURN_retrieve(ref, max_results=1, testnet=False):
             txids = txns.keys()
 
     for txid in txids:
-      if OP_RETURN_match_ref_txid(ref, txid):
-        if height == 0:
-          txn_unpacked = TX_utils.get_mempool_txn(txid)
+        if OP_RETURN_match_ref_txid(ref, txid):
+            if height == 0:
+                txn_unpacked = TX_utils.get_mempool_txn(txid)
         else:
-          txn_unpacked = txns[txid]
+            txn_unpacked = txns[txid]
 
-        found=OP_RETURN_find_txn_data(txn_unpacked)
+        found=TX_utils.find_txn_data(txn_unpacked)
 
         if found:
           # Collect data from txid which matches ref and contains an OP_RETURN
@@ -200,7 +200,7 @@ def OP_RETURN_retrieve(ref, max_results=1, testnet=False):
           this_height=height
 
           while found['index'] < (len(txn_unpacked['vout'])-1): # this means more data to come
-            next_txid=OP_RETURN_find_spent_txid(this_txns, last_txid, found['index']+1)
+            next_txid=TX_utils.find_spent_txid(this_txns, last_txid, found['index']+1)
 
             # If we found the next txid in the data chain
 
@@ -208,7 +208,7 @@ def OP_RETURN_retrieve(ref, max_results=1, testnet=False):
               result['txids'].append(str(next_txid))
 
               txn_unpacked=this_txns[next_txid]
-              found=OP_RETURN_find_txn_data(txn_unpacked)
+              found=TX_utils.find_txn_data(txn_unpacked)
 
               if found:
                 result['data']+=found['op_return']
@@ -270,7 +270,7 @@ class TX_utils:
     def create_txn(cls, inputs, outputs, metadata):
 
         raw_txn = node.createrawtransaction(inputs, outputs)
-        txn_unpacked = OP_RETURN_unpack_txn(OP_RETURN_hex_to_bin(raw_txn))
+        txn_unpacked = cls.unpack_txn(OP_RETURN_hex_to_bin(raw_txn))
 
         if len(metadata) <= 252:  # 1 byte used for variable int , format uint_8
             data = b'\x4c' + struct.pack("B",len(metadata)) + metadata # OP_PUSHDATA1 format
@@ -284,7 +284,7 @@ class TX_utils:
         txn_unpacked["vout"].append(
             {"value": 0, "scriptPubKey": "6a" + OP_RETURN_bin_to_hex(data)})
 
-        return OP_RETURN_bin_to_hex(OP_RETURN_pack_txn(txn_unpacked))
+        return OP_RETURN_bin_to_hex(cls.pack_txn(txn_unpacked))
     
     @classmethod
     def sign_send_txn(cls, raw_txn):
@@ -296,12 +296,12 @@ class TX_utils:
             return {'error': 'Could not sign the transaction'}
 
         # Check if the peercoin transaction fee is sufficient to cover the txn (0.01PPC/kb)
-        txn_size = len(signed_txn['hex'])/2 # 2 hex chars per byte
-        if (txn_size/1000 > OP_RETURN_BTC_FEE*100):
-            return {'error': 'Transaction fee too low to be accepted on the peercoin chain. Required fee: ' + str(cl(txn_size/1024) * 0.01) + ' PPC'}
+        txn_size = len(signed_txn['hex']) / 2 # 2 hex chars per byte
+        if (txn_size / 1000 > OP_RETURN_BTC_FEE * 100):
+            return {'error': 'Transaction fee too low to be accepted on the peercoin chain. Required fee: ' + str(cl(txn_size / 1024) * 0.01) + ' PPC'}
 
         send_txid = node.sendrawtransaction(signed_txn["hex"])
-        if not (isinstance(send_txid, basestring) and len(send_txid)==64):
+        if not (isinstance(send_txid, basestring) and len(send_txid) == 64):
             return {'error': 'Could not send the transaction'}
 
         return {'txid': str(send_txid)}
@@ -313,7 +313,7 @@ class TX_utils:
     @classmethod
     def get_mempool_txn(cls, txid):
         raw_txn = node.getrawtransaction(txid)
-        return OP_RETURN_unpack_txn(OP_RETURN_hex_to_bin(raw_txn))
+        return cls.unpack_txn(OP_RETURN_hex_to_bin(raw_txn))
     
     @classmethod
     def get_mempool_txns(cls):
@@ -342,9 +342,139 @@ class TX_utils:
         if 'error' in raw_block:
             return {'error': raw_block['error']}
 
-        block=OP_RETURN_unpack_block(raw_block['block'])
+        block=cls.unpack_block(raw_block['block'])
 
         return block['txs']
+    
+    @classmethod
+    def pack_txn(cls, txn):
+        binary=b''
+
+        binary+=struct.pack('<L', txn['version'])
+        # peercoin: 4 byte timestamp https://wiki.peercointalk.org/index.php?title=Transactions
+        binary+=struct.pack('<L', txn['timestamp'])
+
+        binary+=OP_RETURN_pack_varint(len(txn['vin']))
+
+        for input in txn['vin']:
+            binary += OP_RETURN_hex_to_bin(input['txid'])[::-1]
+            binary += struct.pack('<L', input['vout'])
+            binary += OP_RETURN_pack_varint(int(len(input['scriptSig']) / 2 )) # divide by 2 because it is currently in hex
+            binary += OP_RETURN_hex_to_bin(input['scriptSig'])
+            binary += struct.pack('<L', input['sequence'])
+
+        binary += OP_RETURN_pack_varint(len(txn['vout']))
+
+        for output in txn['vout']:
+            binary += OP_RETURN_pack_uint64(int(round(output['value'] * 1000000)))
+            binary += OP_RETURN_pack_varint(int(len(output['scriptPubKey']) / 2 )) # divide by 2 because it is currently in hex
+            binary += OP_RETURN_hex_to_bin(output['scriptPubKey'])
+
+        binary += struct.pack('<L', txn['locktime'])
+
+        return binary
+    
+    @classmethod
+    def unpack_txn(cls, binary):
+        return cls.unpack_txn_buffer(OP_RETURN_buffer(binary))
+    
+    @classmethod
+    def unpack_block(cls, binary):
+        buffer=OP_RETURN_buffer(binary)
+        block={}
+
+        block['version'] = buffer.shift_unpack(4, '<L')
+        block['hashPrevBlock'] = OP_RETURN_bin_to_hex(buffer.shift(32)[::-1])
+        block['hashMerkleRoot'] = OP_RETURN_bin_to_hex(buffer.shift(32)[::-1])
+        block['time'] = buffer.shift_unpack(4, '<L')
+        block['bits'] = buffer.shift_unpack(4, '<L')
+        block['nonce'] = buffer.shift_unpack(4, '<L')
+        block['tx_count'] = buffer.shift_varint()
+
+        block['txs'] = {}
+
+        old_ptr = buffer.used()
+
+        while buffer.remaining():
+            transaction = cls.unpack_txn_buffer(buffer)
+            new_ptr = buffer.used()
+            size = new_ptr-old_ptr
+
+            raw_txn_binary = binary[old_ptr:old_ptr + size]
+            txid = OP_RETURN_bin_to_hex(hashlib.sha256(hashlib.sha256(raw_txn_binary).digest()).digest()[::-1])
+
+            old_ptr = new_ptr
+            transaction['size'] = size
+            block['txs'][txid] = transaction
+
+        return block
+    
+    @classmethod
+    def unpack_txn_buffer(cls, buffer):
+        # see: https://en.bitcoin.it/wiki/Transactions
+
+        txn={
+            'vin': [],
+            'vout': [],
+        }
+
+        txn['version'] = buffer.shift_unpack(4, '<L') # small-endian 32-bits
+        # peercoin: 4 byte timestamp https://wiki.peercointalk.org/index.php?title=Transactions
+        txn['timestamp'] = buffer.shift_unpack(4, '<L') # small-endian 32-bits
+
+        inputs = buffer.shift_varint()
+        if inputs > 100000: # sanity check
+            return None
+
+        for _ in range(inputs):
+            _input = {}
+
+            _input['txid']=OP_RETURN_bin_to_hex(buffer.shift(32)[::-1])
+            _input['vout']=buffer.shift_unpack(4, '<L')
+            length=buffer.shift_varint()
+            _input['scriptSig']=OP_RETURN_bin_to_hex(buffer.shift(length))
+            _input['sequence']=buffer.shift_unpack(4, '<L')
+
+            txn['vin'].append(_input)
+
+        outputs = buffer.shift_varint()
+        if outputs > 100000: # sanity check
+            return None
+
+        for _ in range(outputs):
+            output={}
+
+            output['value']=float(buffer.shift_uint64()) / 1000000
+            length=buffer.shift_varint()
+            output['scriptPubKey'] = OP_RETURN_bin_to_hex(buffer.shift(length))
+
+            txn['vout'].append(output)
+
+        txn['locktime'] = buffer.shift_unpack(4, '<L')
+
+        return txn
+    
+    @classmethod
+    def find_spent_txid(cls, txns, spent_txid, spent_vout):
+
+        for txid, txn_unpacked in txns.items():
+            for input in txn_unpacked['vin']:
+                if (input['txid'] == spent_txid) and (input['vout'] == spent_vout):
+                    return txid
+        return None
+
+    @classmethod
+    def find_txn_data(cls, txn_unpacked):
+        for index, output in enumerate(txn_unpacked['vout']):
+            op_return=OP_RETURN_get_script_data(OP_RETURN_hex_to_bin(output['scriptPubKey']))
+
+            if op_return:
+                return {
+                    'index': index,
+                    'op_return': op_return,
+                }
+
+        return None
 
 # Working with data references
 
@@ -464,106 +594,6 @@ def OP_RETURN_match_ref_txid(ref, txid):
 
     return txid_part==txid_match # exact binary comparison
 
-## Unpacking and packing bitcoin blocks and transactions
-
-def OP_RETURN_unpack_block(binary):
-    buffer=OP_RETURN_buffer(binary)
-    block={}
-
-    block['version']=buffer.shift_unpack(4, '<L')
-    block['hashPrevBlock']=OP_RETURN_bin_to_hex(buffer.shift(32)[::-1])
-    block['hashMerkleRoot']=OP_RETURN_bin_to_hex(buffer.shift(32)[::-1])
-    block['time']=buffer.shift_unpack(4, '<L')
-    block['bits']=buffer.shift_unpack(4, '<L')
-    block['nonce']=buffer.shift_unpack(4, '<L')
-    block['tx_count']=buffer.shift_varint()
-
-    block['txs']={}
-
-    old_ptr=buffer.used()
-
-    while buffer.remaining():
-        transaction=OP_RETURN_unpack_txn_buffer(buffer)
-        new_ptr=buffer.used()
-        size=new_ptr-old_ptr
-
-        raw_txn_binary=binary[old_ptr:old_ptr+size]
-        txid=OP_RETURN_bin_to_hex(hashlib.sha256(hashlib.sha256(raw_txn_binary).digest()).digest()[::-1])
-
-        old_ptr=new_ptr
-
-        transaction['size']=size
-        block['txs'][txid]=transaction
-
-    return block
-
-def OP_RETURN_unpack_txn(binary):
-    return OP_RETURN_unpack_txn_buffer(OP_RETURN_buffer(binary))
-
-def OP_RETURN_unpack_txn_buffer(buffer):
-    # see: https://en.bitcoin.it/wiki/Transactions
-
-    txn={
-        'vin': [],
-        'vout': [],
-    }
-
-    txn['version']=buffer.shift_unpack(4, '<L') # small-endian 32-bits
-    # peercoin: 4 byte timestamp https://wiki.peercointalk.org/index.php?title=Transactions
-    txn['timestamp']=buffer.shift_unpack(4, '<L') # small-endian 32-bits
-
-    inputs=buffer.shift_varint()
-    if inputs > 100000: # sanity check
-        return None
-
-    for _ in range(inputs):
-        input={}
-
-        input['txid']=OP_RETURN_bin_to_hex(buffer.shift(32)[::-1])
-        input['vout']=buffer.shift_unpack(4, '<L')
-        length=buffer.shift_varint()
-        input['scriptSig']=OP_RETURN_bin_to_hex(buffer.shift(length))
-        input['sequence']=buffer.shift_unpack(4, '<L')
-
-        txn['vin'].append(input)
-
-    outputs = buffer.shift_varint()
-    if outputs > 100000: # sanity check
-        return None
-
-    for _ in range(outputs):
-        output={}
-
-        output['value']=float(buffer.shift_uint64())/1000000
-        length=buffer.shift_varint()
-        output['scriptPubKey']=OP_RETURN_bin_to_hex(buffer.shift(length))
-
-        txn['vout'].append(output)
-
-    txn['locktime']=buffer.shift_unpack(4, '<L')
-
-    return txn
-
-def OP_RETURN_find_spent_txid(txns, spent_txid, spent_vout):
-
-    for txid, txn_unpacked in txns.items():
-        for input in txn_unpacked['vin']:
-            if (input['txid'] == spent_txid) and (input['vout'] == spent_vout):
-                return txid
-    return None
-
-def OP_RETURN_find_txn_data(txn_unpacked):
-    for index, output in enumerate(txn_unpacked['vout']):
-        op_return=OP_RETURN_get_script_data(OP_RETURN_hex_to_bin(output['scriptPubKey']))
-
-        if op_return:
-            return {
-                'index': index,
-                'op_return': op_return,
-            }
-
-    return None
-
 def OP_RETURN_get_script_data(scriptPubKeyBinary):
     op_return=None
 
@@ -578,33 +608,6 @@ def OP_RETURN_get_script_data(scriptPubKeyBinary):
             op_return = scriptPubKeyBinary[4:4+ord(scriptPubKeyBinary[2:3])+256*ord(scriptPubKeyBinary[3:4])]
 
     return op_return
-
-def OP_RETURN_pack_txn(txn):
-    binary=b''
-
-    binary+=struct.pack('<L', txn['version'])
-    # peercoin: 4 byte timestamp https://wiki.peercointalk.org/index.php?title=Transactions
-    binary+=struct.pack('<L', txn['timestamp'])
-
-    binary+=OP_RETURN_pack_varint(len(txn['vin']))
-
-    for input in txn['vin']:
-        binary+=OP_RETURN_hex_to_bin(input['txid'])[::-1]
-        binary+=struct.pack('<L', input['vout'])
-        binary+=OP_RETURN_pack_varint(int(len(input['scriptSig'])/2)) # divide by 2 because it is currently in hex
-        binary+=OP_RETURN_hex_to_bin(input['scriptSig'])
-        binary+=struct.pack('<L', input['sequence'])
-
-    binary+=OP_RETURN_pack_varint(len(txn['vout']))
-
-    for output in txn['vout']:
-        binary+=OP_RETURN_pack_uint64(int(round(output['value']*1000000)))
-        binary+=OP_RETURN_pack_varint(int(len(output['scriptPubKey'])/2)) # divide by 2 because it is currently in hex
-        binary+=OP_RETURN_hex_to_bin(output['scriptPubKey'])
-
-    binary+=struct.pack('<L', txn['locktime'])
-
-    return binary
 
 def OP_RETURN_pack_varint(integer):
     if integer>0xFFFFFFFF:
@@ -706,5 +709,4 @@ if __name__ == "__main__":
                         nargs="*")
     args = parser.parse_args()
     main()
-
 
