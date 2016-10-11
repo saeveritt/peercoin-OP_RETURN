@@ -679,24 +679,7 @@ def OP_RETURN_hex_to_bin(hex):
 def OP_RETURN_bin_to_hex(string):
     return binascii.b2a_hex(string).decode('utf-8')
 
-def main():
-    if args.testnet:
-        node = Client(testnet=True)
-    else:
-        node = Client(testnet=False)
-
-    if args.testnet and args.auth:
-        node = Client(testnet=True, username=args.auth[0], password=args.auth[1])
-
-    if args.auth:
-        node = Client(testnet=False, username=args.auth[0], password=args.auth[1])
-
-    if args.send:
-        result = send(args.send)
-        if 'error' in result:
-            print('Error: ' + result['error'])
-        else:
-            print("Success: ", result)
+### ### ### ### ### ### ### ### ### ### ### ###
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Send and recive OP_RETURNs in Peercoin transactions.')
@@ -708,5 +691,22 @@ if __name__ == "__main__":
                         help="<send-address> <send-amount> <message>", 
                         nargs="*")
     args = parser.parse_args()
-    main()
+
+if args.testnet:
+    node = Client(testnet=True)
+else:
+    node = Client(testnet=False)
+
+if args.testnet and args.auth:
+    node = Client(testnet=True, username=args.auth[0], password=args.auth[1])
+
+if args.auth:
+    node = Client(testnet=False, username=args.auth[0], password=args.auth[1])
+
+if args.send:
+    result = send(str(args.send[0]), float(args.send[1]), str(args.send[2]))
+    if 'error' in result:
+        print('Error: ' + result['error'])
+    else:
+        print("Success: ", result)
 
