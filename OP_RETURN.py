@@ -253,21 +253,18 @@ class TX_utils:
         to never spend old transactions with a lot of coin age'''
         '''Argument is intiger, returns list of apropriate transactions'''
         from operator import itemgetter
-        
-        txids = []
+
         vins = []
         utxo_sum = float(-0.01) ## starts from negative due to fee
         for i in sorted(node.listunspent(), key=itemgetter('confirmations')):
-            if i["txid"] not in txids:
-                txids.append(i["txid"])
-                vins.append({"txid":i["txid"].encode(),"vout":i["vout"]})
-                utxo_sum = utxo_sum + float(i["amount"])
-                if utxo_sum >= total_amount:
-                    #return txids
-                    change_address = i["address"].encode()
-                    return vins , utxo_sum , change_address
-                else:
-                    raise ValueError("Not enough funds.")
+            vins.append({"txid":i["txid"].encode(),"vout":i["vout"]})
+            utxo_sum = utxo_sum + float(i["amount"])
+            if utxo_sum >= total_amount:
+                 #return txids
+                change_address = i["address"].encode()
+                return vins , utxo_sum , change_address
+        if utxo_sum < total_amount:
+            raise ValueError("Not enough funds.")
     
     @classmethod
     def create_txn(cls, inputs, outputs, metadata):
