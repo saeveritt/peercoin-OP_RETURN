@@ -688,8 +688,9 @@ if __name__ == "__main__":
                         action="store_true")
     parser.add_argument("-testnet", help="Operate on Peercoin testnet.", action="store_true")
     parser.add_argument("-send", 
-                        help="<send-address> <send-amount> <message>", 
+                        help="Send OP_RETURN message: <send-address> <send-amount> <message>", 
                         nargs="*")
+    parser.add_argument("-store", help="Store some data on the blockchain: <data>", action="store_true", nargs="*")
     args = parser.parse_args()
 
 if args.testnet:
@@ -709,4 +710,16 @@ if args.send:
         print('Error: ' + result['error'])
     else:
         print("Success: ", result)
+
+if args.store:
+    
+    if OP_RETURN_hex_to_bin(args.store[0]) is not None:
+        data = data_from_hex
+        result = store(data)
+
+    result = store(args.store[0])
+    if 'error' in result:
+        print('Error: ' + result['error'])
+    else:
+        print("TxIDs:\n"+"\n".join(result['txids']) + "\n\nRef: " + result['ref'])
 
