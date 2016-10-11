@@ -687,10 +687,9 @@ if __name__ == "__main__":
     parser.add_argument("-auth", help="Specify username/password for Peercoin JSON-RPC interface: <username>, <password>",
                         action="store_true")
     parser.add_argument("-testnet", help="Operate on Peercoin testnet.", action="store_true")
-    parser.add_argument("-send", 
-                        help="Send OP_RETURN message: <send-address> <send-amount> <message>", 
+    parser.add_argument("-send", help="Send OP_RETURN message: <send-address> <send-amount> <message>", 
                         nargs="*")
-    parser.add_argument("-store", help="Store some data on the blockchain: <data>", action="store_true", nargs="*")
+    parser.add_argument("-store", help="Store some data on the blockchain: <data>", nargs="*")
     args = parser.parse_args()
 
 if args.testnet:
