@@ -26,7 +26,7 @@
 
 import argparse
 from peercoin_rpc import Client
-import base64, json, time, random, binascii, struct, string, re, hashlib
+import base64, random, binascii, struct, string, re, hashlib
 
 # Python 2-3 compatibility logic
 try:
