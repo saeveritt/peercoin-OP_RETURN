@@ -129,8 +129,8 @@ def store(data):
 
         result['txids'].append(send_result['txid'])
 
-        if data_ptr==0:
-            result['ref']=OP_RETURN_calc_ref(height, send_result['txid'], avoid_txids)
+        if data_ptr == 0:
+            result['ref'] = Data_utils.calc_ref(height, send_result['txid'], avoid_txids)
 
         # Prepare inputs for next iteration
         inputs=[{
@@ -142,15 +142,14 @@ def store(data):
     
     return result # Return the final result
 
-def OP_RETURN_retrieve(ref, max_results=1):
-    # Validate parameters and get status of Bitcoin Core
-    
+def retrieve(ref, max_results=1):
+
     max_height = int(node.getblockcount())
-    heights=OP_RETURN_get_ref_heights(ref, max_height)
-    
+    heights = Data_utils.get_ref_heights(ref, max_height)
+
     if not isinstance(heights, list):
         return {'error': 'Ref is not valid'}
-    
+
     # Collect and return the results
     results=[]
 
@@ -163,13 +162,13 @@ def OP_RETURN_retrieve(ref, max_results=1):
             txids = txns.keys()
 
     for txid in txids:
-        if OP_RETURN_match_ref_txid(ref, txid):
+        if Data_utils.match_ref_txid(ref, txid):
             if height == 0:
                 txn_unpacked = TX_utils.get_mempool_txn(txid)
         else:
             txn_unpacked = txns[txid]
 
-        found=TX_utils.find_txn_data(txn_unpacked)
+        found = Data_utils.find_txn_data(txn_unpacked)
 
         if found:
           # Collect data from txid which matches ref and contains an OP_RETURN
@@ -183,11 +182,11 @@ def OP_RETURN_retrieve(ref, max_results=1):
 
           # Work out which other block heights / mempool we should try
 
-          if height==0:
-            try_heights=[] # nowhere else to look if first still in mempool
+          if height == 0:
+            try_heights = [] # nowhere else to look if first still in mempool
           else:
-            result['ref']=OP_RETURN_calc_ref(height, txid, txns.keys())
-            try_heights=OP_RETURN_get_try_heights(height+1, max_height, False)
+            result['ref'] = Data_utils.calc_ref(height, txid, txns.keys())
+            try_heights = Data_utils.get_try_heights(height + 1, max_height, False)
 
           # Collect the rest of the data, if appropriate
 
@@ -208,7 +207,7 @@ def OP_RETURN_retrieve(ref, max_results=1):
               result['txids'].append(str(next_txid))
 
               txn_unpacked=this_txns[next_txid]
-              found=TX_utils.find_txn_data(txn_unpacked)
+              found = Data_utils.find_txn_data(txn_unpacked)
 
               if found:
                 result['data']+=found['op_return']
@@ -270,7 +269,7 @@ class TX_utils:
     def create_txn(cls, inputs, outputs, metadata):
 
         raw_txn = node.createrawtransaction(inputs, outputs)
-        txn_unpacked = cls.unpack_txn(OP_RETURN_hex_to_bin(raw_txn))
+        txn_unpacked = cls.unpack_txn(Data_utils.hex_to_bin(raw_txn))
 
         if len(metadata) <= 252:  # 1 byte used for variable int , format uint_8
             data = b'\x4c' + struct.pack("B",len(metadata)) + metadata # OP_PUSHDATA1 format
@@ -282,9 +281,9 @@ class TX_utils:
             return {'error': 'metadata exceeds maximum length.'}
         
         txn_unpacked["vout"].append(
-            {"value": 0, "scriptPubKey": "6a" + OP_RETURN_bin_to_hex(data)})
+            {"value": 0, "scriptPubKey": "6a" + Data_utils.bin_to_hex(data)})
 
-        return OP_RETURN_bin_to_hex(cls.pack_txn(txn_unpacked))
+        return Data_utils.bin_to_hex(cls.pack_txn(txn_unpacked))
     
     @classmethod
     def sign_send_txn(cls, raw_txn):
@@ -313,7 +312,7 @@ class TX_utils:
     @classmethod
     def get_mempool_txn(cls, txid):
         raw_txn = node.getrawtransaction(txid)
-        return cls.unpack_txn(OP_RETURN_hex_to_bin(raw_txn))
+        return cls.unpack_txn(Data_utils.hex_to_bin(raw_txn))
     
     @classmethod
     def get_mempool_txns(cls):
@@ -333,7 +332,7 @@ class TX_utils:
             return {'error': 'Block at height ' + str(height) + ' not found'}
 
         return {
-            'block': OP_RETURN_hex_to_bin(node.getblock(block_hash))
+            'block': Data_utils.hex_to_bin(node.getblock(block_hash))
         }
 
     @classmethod
@@ -345,47 +344,47 @@ class TX_utils:
         block=cls.unpack_block(raw_block['block'])
 
         return block['txs']
+     
+    @classmethod
+    def unpack_txn(cls, binary):
+        return cls.unpack_txn_buffer(OP_RETURN_buffer(binary))
     
     @classmethod
     def pack_txn(cls, txn):
         binary=b''
 
-        binary+=struct.pack('<L', txn['version'])
+        binary += struct.pack('<L', txn['version'])
         # peercoin: 4 byte timestamp https://wiki.peercointalk.org/index.php?title=Transactions
-        binary+=struct.pack('<L', txn['timestamp'])
+        binary += struct.pack('<L', txn['timestamp'])
 
-        binary+=OP_RETURN_pack_varint(len(txn['vin']))
+        binary += cls.pack_varint(len(txn['vin']))
 
         for input in txn['vin']:
-            binary += OP_RETURN_hex_to_bin(input['txid'])[::-1]
+            binary += Data_utils.hex_to_bin(input['txid'])[::-1]
             binary += struct.pack('<L', input['vout'])
-            binary += OP_RETURN_pack_varint(int(len(input['scriptSig']) / 2 )) # divide by 2 because it is currently in hex
-            binary += OP_RETURN_hex_to_bin(input['scriptSig'])
+            binary += cls.pack_varint(int(len(input['scriptSig']) / 2 )) # divide by 2 because it is currently in hex
+            binary += Data_utils.hex_to_bin(input['scriptSig'])
             binary += struct.pack('<L', input['sequence'])
 
-        binary += OP_RETURN_pack_varint(len(txn['vout']))
+        binary += cls.pack_varint(len(txn['vout']))
 
         for output in txn['vout']:
-            binary += OP_RETURN_pack_uint64(int(round(output['value'] * 1000000)))
-            binary += OP_RETURN_pack_varint(int(len(output['scriptPubKey']) / 2 )) # divide by 2 because it is currently in hex
-            binary += OP_RETURN_hex_to_bin(output['scriptPubKey'])
+            binary += Data_utils.pack_uint64(int(round(output['value'] * 1000000 )))
+            binary += Data_utils.pack_varint(int(len(output['scriptPubKey']) / 2 )) # divide by 2 because it is currently in hex
+            binary += Data_utils.hex_to_bin(output['scriptPubKey'])
 
         binary += struct.pack('<L', txn['locktime'])
 
         return binary
-    
-    @classmethod
-    def unpack_txn(cls, binary):
-        return cls.unpack_txn_buffer(OP_RETURN_buffer(binary))
-    
+
     @classmethod
     def unpack_block(cls, binary):
         buffer=OP_RETURN_buffer(binary)
         block={}
 
         block['version'] = buffer.shift_unpack(4, '<L')
-        block['hashPrevBlock'] = OP_RETURN_bin_to_hex(buffer.shift(32)[::-1])
-        block['hashMerkleRoot'] = OP_RETURN_bin_to_hex(buffer.shift(32)[::-1])
+        block['hashPrevBlock'] = Data_utils.bin_to_hex(buffer.shift(32)[::-1])
+        block['hashMerkleRoot'] = Data_utils.bin_to_hex(buffer.shift(32)[::-1])
         block['time'] = buffer.shift_unpack(4, '<L')
         block['bits'] = buffer.shift_unpack(4, '<L')
         block['nonce'] = buffer.shift_unpack(4, '<L')
@@ -401,7 +400,7 @@ class TX_utils:
             size = new_ptr-old_ptr
 
             raw_txn_binary = binary[old_ptr:old_ptr + size]
-            txid = OP_RETURN_bin_to_hex(hashlib.sha256(hashlib.sha256(raw_txn_binary).digest()).digest()[::-1])
+            txid = Data_utils.bin_to_hex(hashlib.sha256(hashlib.sha256(raw_txn_binary).digest()).digest()[::-1])
 
             old_ptr = new_ptr
             transaction['size'] = size
@@ -429,11 +428,11 @@ class TX_utils:
         for _ in range(inputs):
             _input = {}
 
-            _input['txid']=OP_RETURN_bin_to_hex(buffer.shift(32)[::-1])
-            _input['vout']=buffer.shift_unpack(4, '<L')
+            _input['txid'] = Data_utils.bin_to_hex(buffer.shift(32)[::-1])
+            _input['vout'] = buffer.shift_unpack(4, '<L')
             length=buffer.shift_varint()
-            _input['scriptSig']=OP_RETURN_bin_to_hex(buffer.shift(length))
-            _input['sequence']=buffer.shift_unpack(4, '<L')
+            _input['scriptSig'] = Data_utils.bin_to_hex(buffer.shift(length))
+            _input['sequence'] = buffer.shift_unpack(4, '<L')
 
             txn['vin'].append(_input)
 
@@ -446,7 +445,7 @@ class TX_utils:
 
             output['value']=float(buffer.shift_uint64()) / 1000000
             length=buffer.shift_varint()
-            output['scriptPubKey'] = OP_RETURN_bin_to_hex(buffer.shift(length))
+            output['scriptPubKey'] = Data_utils.bin_to_hex(buffer.shift(length))
 
             txn['vout'].append(output)
 
@@ -464,17 +463,6 @@ class TX_utils:
         return None
 
     @classmethod
-    def find_txn_data(cls, txn_unpacked):
-        for index, output in enumerate(txn_unpacked['vout']):
-            op_return=OP_RETURN_get_script_data(OP_RETURN_hex_to_bin(output['scriptPubKey']))
-
-            if op_return:
-                return {
-                    'index': index,
-                    'op_return': op_return,
-                }
-
-        return None
 
 # Working with data references
 
@@ -491,144 +479,180 @@ class TX_utils:
 # (([partial txid] mod 65536) div 256) is the byte of the txid at that offset plus one.
 # Note that the txid is ordered according to user presentation, not raw data in the block.
 
+class Data_utils:
+    
+    @classmethod
+    def calc_ref(cls, next_height, txid, avoid_txids):
+        txid_binary = cls.hex_to_bin(txid)
 
-def OP_RETURN_calc_ref(next_height, txid, avoid_txids):
-    txid_binary=OP_RETURN_hex_to_bin(txid)
+        for txid_offset in range(15):
+            sub_txid=txid_binary[2*txid_offset:2*txid_offset+2]
+            clashed=False
 
-    for txid_offset in range(15):
-        sub_txid=txid_binary[2*txid_offset:2*txid_offset+2]
-        clashed=False
+            for avoid_txid in avoid_txids:
+                avoid_txid_binary = cls.hex_to_bin(avoid_txid)
 
-        for avoid_txid in avoid_txids:
-            avoid_txid_binary=OP_RETURN_hex_to_bin(avoid_txid)
+            if (
+                (avoid_txid_binary[2*txid_offset:2*txid_offset+2]==sub_txid) and
+                (txid_binary!=avoid_txid_binary)
+            ):
+                clashed=True
+                break
 
-        if (
-            (avoid_txid_binary[2*txid_offset:2*txid_offset+2]==sub_txid) and
-            (txid_binary!=avoid_txid_binary)
-        ):
-            clashed=True
-            break
+            if not clashed:
+                break
 
-        if not clashed:
-            break
-
-    if clashed: # could not find a good reference
-        return None
-
-    tx_ref=ord(txid_binary[2*txid_offset:1+2*txid_offset])+256*ord(txid_binary[1+2*txid_offset:2+2*txid_offset])+65536*txid_offset
-
-    return '%06d-%06d' % (next_height, tx_ref)
-
-def OP_RETURN_get_ref_parts(ref):
-    if not re.search('^[0-9]+\-[0-9A-Fa-f]+$', ref): # also support partial txid for second half
-        return None
-
-    parts=ref.split('-')
-
-    if re.search('[A-Fa-f]', parts[1]):
-        if len(parts[1])>=4:
-            txid_binary=OP_RETURN_hex_to_bin(parts[1][0:4])
-            parts[1]=ord(txid_binary[0:1])+256*ord(txid_binary[1:2])+65536*0
-        else:
+        if clashed: # could not find a good reference
             return None
 
-    parts=list(map(int, parts))
+        tx_ref=ord(txid_binary[2*txid_offset:1+2*txid_offset])+256*ord(txid_binary[1+2*txid_offset:2+2*txid_offset])+65536*txid_offset
 
-    if parts[1]>983039: # 14*65536+65535
-        return None
-
-    return parts
-
-def OP_RETURN_get_ref_heights(ref, max_height):
-    parts=OP_RETURN_get_ref_parts(ref)
-    if not parts:
-        return None
-
-    return OP_RETURN_get_try_heights(parts[0], max_height, True)
-
-def OP_RETURN_get_try_heights(est_height, max_height, also_back):
-    forward_height=est_height
-    back_height=min(forward_height-1, max_height)
-
-    heights=[]
-    mempool=False
-    try_height=0
-
-    while True:
-        if also_back and ((try_height%3)==2): # step back every 3 tries
-            heights.append(back_height)
-            back_height-=1
+        return '%06d-%06d' % (next_height, tx_ref)
     
-        else:
-            if forward_height>max_height:
-                if not mempool:
-                    heights.append(0) # indicates to try mempool
-                    mempool=True
+    @classmethod
+    def get_ref_parts(cls, ref):
+        if not re.search('^[0-9]+\-[0-9A-Fa-f]+$', ref): # also support partial txid for second half
+            return None
 
-                elif not also_back:
-                    break # nothing more to do here
+        parts=ref.split('-')
 
+        if re.search('[A-Fa-f]', parts[1]):
+            if len(parts[1]) >= 4:
+                txid_binary = cls.hex_to_bin(parts[1][0:4])
+                parts[1]=ord(txid_binary[0:1])+256*ord(txid_binary[1:2])+65536*0
             else:
-                heights.append(forward_height)
+                return None
 
-        forward_height+=1
+        parts=list(map(int, parts))
 
-        if len(heights) >= OP_RETURN_MAX_BLOCKS:
-            break
+        if parts[1]>983039: # 14*65536+65535
+            return None
 
-        try_height+=1
+        return parts
+    
+    @classmethod
+    def get_ref_heights(cls, ref, max_height):
+        parts = cls.get_ref_parts(ref)
+        if not parts:
+            return None
 
-    return heights
+        return cls.get_try_heights(parts[0], max_height, True)
+    
+    @classmethod
+    def get_try_heights(cls, est_height, max_height, also_back):
+        forward_height = est_height
+        back_height = min(forward_height-1, max_height)
 
-def OP_RETURN_match_ref_txid(ref, txid):
-    parts=OP_RETURN_get_ref_parts(ref)
+        heights=[]
+        mempool=False
+        try_height=0
 
-    if not parts:
+        while True:
+            if also_back and ((try_height%3)==2): # step back every 3 tries
+                heights.append(back_height)
+                back_height-=1
+        
+            else:
+                if forward_height>max_height:
+                    if not mempool:
+                        heights.append(0) # indicates to try mempool
+                        mempool=True
+
+                    elif not also_back:
+                        break # nothing more to do here
+
+                else:
+                    heights.append(forward_height)
+
+            forward_height+=1
+
+            if len(heights) >= OP_RETURN_MAX_BLOCKS:
+                break
+
+            try_height+=1
+
+        return heights
+
+    @classmethod
+    def match_ref_txid(cls, ref, txid):
+        parts = cls.get_ref_parts(ref)
+
+        if not parts:
+            return None
+
+        txid_offset = int(parts[1] / 65536)
+        txid_binary = cls.hex_to_bin(txid)
+
+        txid_part=txid_binary[2 * txid_offset:2 * txid_offset + 2]
+        txid_match=bytearray([parts[1]%256, int((parts[1]%65536)/256)])
+
+        return txid_part == txid_match # exact binary comparison
+    
+    @classmethod
+    def find_txn_data(cls, txn_unpacked):
+        for index, output in enumerate(txn_unpacked['vout']):
+            op_return = cls.get_script_data(cls.hex_to_bin(output['scriptPubKey']))
+
+            if op_return:
+                return {
+                    'index': index,
+                    'op_return': op_return,
+                }
+
         return None
 
-    txid_offset=int(parts[1]/65536)
-    txid_binary=OP_RETURN_hex_to_bin(txid)
+    @classmethod
+    def get_script_data(cls, scriptPubKeyBinary):
+        op_return=None
 
-    txid_part=txid_binary[2*txid_offset:2*txid_offset+2]
-    txid_match=bytearray([parts[1]%256, int((parts[1]%65536)/256)])
+        if scriptPubKeyBinary[0:1] == b'\x6a':
+            first_ord=ord(scriptPubKeyBinary[1:2])
 
-    return txid_part==txid_match # exact binary comparison
+            if first_ord <= 75:
+                op_return = scriptPubKeyBinary[2:2+first_ord]
+            elif first_ord == 0x4c:
+                op_return = scriptPubKeyBinary[3:3+ord(scriptPubKeyBinary[2:3])]
+            elif first_ord == 0x4d:
+                op_return = scriptPubKeyBinary[4:4+ord(scriptPubKeyBinary[2:3])+256*ord(scriptPubKeyBinary[3:4])]
 
-def OP_RETURN_get_script_data(scriptPubKeyBinary):
-    op_return=None
+        return op_return
+    
+    @classmethod
+    def pack_varint(cls, integer):
+        if integer > 0xFFFFFFFF:
+            packed = b'\xFF' + cls.pack_uint64(integer)
+        elif integer > 0xFFFF:
+            packed = b'\xFE'+struct.pack('<L', integer)
+        elif integer > 0xFC:
+            packed = b'\xFD'+struct.pack('<H', integer)
+        else:
+            packed = struct.pack('B', integer)
 
-    if scriptPubKeyBinary[0:1]==b'\x6a':
-        first_ord=ord(scriptPubKeyBinary[1:2])
+        return packed
+    
+    @classmethod
+    def pack_uint64(cls, integer):
+        upper = int(integer / 4294967296)
+        lower = integer - upper * 4294967296
 
-        if first_ord <= 75:
-            op_return = scriptPubKeyBinary[2:2+first_ord]
-        elif first_ord == 0x4c:
-            op_return = scriptPubKeyBinary[3:3+ord(scriptPubKeyBinary[2:3])]
-        elif first_ord == 0x4d:
-            op_return = scriptPubKeyBinary[4:4+ord(scriptPubKeyBinary[2:3])+256*ord(scriptPubKeyBinary[3:4])]
+        return struct.pack('<L', lower) + struct.pack('<L', upper)
 
-    return op_return
+    # Converting binary <-> hexadecimal
+    @classmethod
+    def hex_to_bin(cls, hex):
+        try:
+            raw=binascii.a2b_hex(hex)
+        except Exception:
+            return None
 
-def OP_RETURN_pack_varint(integer):
-    if integer>0xFFFFFFFF:
-        packed=b'\xFF'+OP_RETURN_pack_uint64(integer)
-    elif integer>0xFFFF:
-        packed=b'\xFE'+struct.pack('<L', integer)
-    elif integer>0xFC:
-        packed=b'\xFD'+struct.pack('<H', integer)
-    else:
-        packed=struct.pack('B', integer)
+        return raw
+    
+    @classmethod
+    def bin_to_hex(cls, string):
+        return binascii.b2a_hex(string).decode('utf-8')
 
-    return packed
 
-def OP_RETURN_pack_uint64(integer):
-    upper=int(integer/4294967296)
-    lower=integer-upper*4294967296
-
-    return struct.pack('<L', lower)+struct.pack('<L', upper)
-
-# Helper class for unpacking bitcoin binary data
-class OP_RETURN_buffer():
+class OP_RETURN_buffer(): # Helper class for unpacking bitcoin binary data
 
     def __init__(self, data, ptr=0):
         self.data=data
@@ -667,17 +691,6 @@ class OP_RETURN_buffer():
     def remaining(self):
         return max(self.len-self.ptr, 0)
 
-# Converting binary <-> hexadecimal
-def OP_RETURN_hex_to_bin(hex):
-    try:
-        raw=binascii.a2b_hex(hex)
-    except Exception:
-        return None
-
-    return raw
-
-def OP_RETURN_bin_to_hex(string):
-    return binascii.b2a_hex(string).decode('utf-8')
 
 ### ### ### ### ### ### ### ### ### ### ### ###
 
@@ -690,35 +703,58 @@ if __name__ == "__main__":
     parser.add_argument("-send", help="Send OP_RETURN message: <send-address> <send-amount> <message>", 
                         nargs="*")
     parser.add_argument("-store", help="Store some data on the blockchain: <data>", nargs="*")
+    parser.add_argument("-retrieve", help="Retrieve OP_RETURN data from the blockchain.", nargs="*")
     args = parser.parse_args()
 
-if args.testnet:
-    node = Client(testnet=True)
-else:
-    node = Client(testnet=False)
-
-if args.testnet and args.auth:
-    node = Client(testnet=True, username=args.auth[0], password=args.auth[1])
-
-if args.auth:
-    node = Client(testnet=False, username=args.auth[0], password=args.auth[1])
-
-if args.send:
-    result = send(str(args.send[0]), float(args.send[1]), str(args.send[2]))
-    if 'error' in result:
-        print('Error: ' + result['error'])
+    if args.testnet:
+        node = Client(testnet=True)
     else:
-        print("Success: ", result)
+        node = Client(testnet=False)
 
-if args.store:
+    if args.testnet and args.auth:
+        node = Client(testnet=True, username=args.auth[0], password=args.auth[1])
+
+    if args.auth:
+        node = Client(testnet=False, username=args.auth[0], password=args.auth[1])
+
+    if args.send:
+        result = send(str(args.send[0]), float(args.send[1]), str(args.send[2]))
+        if 'error' in result:
+            print('Error: ' + result['error'])
+        else:
+            print("Success: ", result)
     
-    if OP_RETURN_hex_to_bin(args.store[0]) is not None:
-        data = data_from_hex
-        result = store(data)
+    if args.retrieve:
+        results = retrieve(ref, 1)
 
-    result = store(args.store[0])
-    if 'error' in result:
-        print('Error: ' + result['error'])
+        if 'error' in results:
+            print('Error: '+results['error'])
+    
+    elif len(results):
+        for result in results:
+            print("Hex: ("+str(len(result['data']))+" bytes)\n" + Data_utils.bin_to_hex(result['data'])+"\n")
+            print("ASCII:\n"+re.sub(b'[^\x20-\x7E]', b'?', result['data']).decode('utf-8')+"\n")
+            print("TxIDs: (count "+str(len(result['txids']))+")\n"+"\n".join(result['txids'])+"\n")
+            print("Blocks:"+("\n"+("\n".join(map(str, result['heights'])))+"\n").replace("\n0\n", "\n[mempool]\n"))
+            
+            if 'ref' in result:
+                print("Best ref:\n"+result['ref']+"\n")
+
+            if 'error' in result:
+                print("Error:\n"+result['error']+"\n")
+
     else:
-        print("TxIDs:\n"+"\n".join(result['txids']) + "\n\nRef: " + result['ref'])
+        print("No matching data was found")
+
+    if args.store:
+        
+        if Data_utils.hex_to_bin(args.store[0]) is not None:
+            data = data_from_hex
+            result = store(data)
+
+        result = store(args.store[0])
+        if 'error' in result:
+            print('Error: ' + result['error'])
+        else:
+            print("TxIDs:\n"+"\n".join(result['txids']) + "\n\nRef: " + result['ref'])
 
