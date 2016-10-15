@@ -1,14 +1,16 @@
-peercoin-OP_RETURN
-=====================
-Simple Python commands and libraries for using OP_RETURNs in peercoin transactions.
-Forked from python-OP_RETURN by Coin Sciences Ltd.
+# peercoin-OP_RETURN
 
-Copyright (c) Coin Sciences Ltd - http://coinsecrets.org/
-Copyright (c) peerchemist       - https://github.com/peerchemist
-Copyright (c) hrobeers          - https://github.com/hrobeers
+## Simple Python library for using OP_RETURNs in peercoin transactions.
+
+*Forked from python-OP_RETURN by Coin Sciences Ltd.*
+
+* Copyright (c) Coin Sciences Ltd - http://coinsecrets.org/
+* Copyright (c) peerchemist       - https://github.com/peerchemist
+* Copyright (c) hrobeers          - https://github.com/hrobeers
 
 MIT License (see headers in files)
 
+_____________________________________________________________________
 
 REQUIREMENTS
 ------------
