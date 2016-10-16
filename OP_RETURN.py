@@ -462,8 +462,6 @@ class TX_utils:
                     return txid
         return None
 
-    @classmethod
-
 # Working with data references
 
 # The format of a data reference is: [estimated block height]-[partial txid] - where:
