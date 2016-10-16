@@ -28,6 +28,8 @@ import argparse
 from peercoin_rpc import Client
 import base64, random, binascii, struct, string, re, hashlib
 
+# set default to testnet on import
+node = Client(testnet=True)
 # Python 2-3 compatibility logic
 try:
     basestring
@@ -377,6 +379,19 @@ class TX_utils:
 
         return binary
 
+    @classmethod
+    def pack_varint(cls, integer):
+        if integer > 0xFFFFFFFF:
+            packed = b'\xFF' + cls.pack_uint64(integer)
+        elif integer > 0xFFFF:
+            packed = b'\xFE'+struct.pack('<L', integer)
+        elif integer > 0xFC:
+            packed = b'\xFD'+struct.pack('<H', integer)
+        else:
+            packed = struct.pack('B', integer)
+
+        return packed
+    
     @classmethod
     def unpack_block(cls, binary):
         buffer=OP_RETURN_buffer(binary)
