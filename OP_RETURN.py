@@ -42,7 +42,7 @@ OP_RETURN_MAX_BLOCKS=10 # maximum number of blocks to try when retrieving data
 
 
 # User-facing functions
-def send(send_address, send_amount, metadata):
+def send(node, send_address, send_amount, metadata):
     '''validats send_address and metadata, assembles the transaction and executes it.'''
     
     # Validate some parameters
@@ -78,7 +78,7 @@ def send(send_address, send_amount, metadata):
     # Sign and send the transaction, return result
     return TX_utils.sign_send_txn(raw_txn)
 
-def store(data):
+def store(node, data):
     # Data is stored in OP_RETURNs within a series of chained transactions.
     # If the OP_RETURN is followed by another output, the data continues in the transaction spending that output.
     # When the OP_RETURN is the last output, this also signifies the end of the data.
@@ -142,7 +142,7 @@ def store(data):
     
     return result # Return the final result
 
-def retrieve(ref, max_results=1):
+def retrieve(node, ref, max_results=1):
 
     max_height = int(node.getblockcount())
     heights = Data_utils.get_ref_heights(ref, max_height)
@@ -716,41 +716,42 @@ if __name__ == "__main__":
         node = Client(testnet=False, username=args.auth[0], password=args.auth[1])
 
     if args.send:
-        result = send(str(args.send[0]), float(args.send[1]), str(args.send[2]))
+        result = send(node, str(args.send[0]), float(args.send[1]), str(args.send[2]))
         if 'error' in result:
             print('Error: ' + result['error'])
         else:
             print("Success: ", result)
     
     if args.retrieve:
-        results = retrieve(ref, 1)
+
+        results = retrieve(node, ref, 1)
 
         if 'error' in results:
             print('Error: '+results['error'])
     
-    elif len(results):
-        for result in results:
-            print("Hex: ("+str(len(result['data']))+" bytes)\n" + Data_utils.bin_to_hex(result['data'])+"\n")
-            print("ASCII:\n"+re.sub(b'[^\x20-\x7E]', b'?', result['data']).decode('utf-8')+"\n")
-            print("TxIDs: (count "+str(len(result['txids']))+")\n"+"\n".join(result['txids'])+"\n")
-            print("Blocks:"+("\n"+("\n".join(map(str, result['heights'])))+"\n").replace("\n0\n", "\n[mempool]\n"))
-            
-            if 'ref' in result:
-                print("Best ref:\n"+result['ref']+"\n")
+        elif len(results):
+            for result in results:
+                print("Hex: ("+str(len(result['data']))+" bytes)\n" + Data_utils.bin_to_hex(result['data'])+"\n")
+                print("ASCII:\n"+re.sub(b'[^\x20-\x7E]', b'?', result['data']).decode('utf-8')+"\n")
+                print("TxIDs: (count "+str(len(result['txids']))+")\n"+"\n".join(result['txids'])+"\n")
+                print("Blocks:"+("\n"+("\n".join(map(str, result['heights'])))+"\n").replace("\n0\n", "\n[mempool]\n"))
+                
+                if 'ref' in result:
+                    print("Best ref:\n"+result['ref']+"\n")
 
-            if 'error' in result:
-                print("Error:\n"+result['error']+"\n")
+                if 'error' in result:
+                    print("Error:\n"+result['error']+"\n")
 
-    else:
-        print("No matching data was found")
+        else:
+            print("No matching data was found")
 
     if args.store:
         
         if Data_utils.hex_to_bin(args.store[0]) is not None:
             data = data_from_hex
-            result = store(data)
+            result = store(node, data)
 
-        result = store(args.store[0])
+        result = store(node, args.store[0])
         if 'error' in result:
             print('Error: ' + result['error'])
         else:
