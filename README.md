@@ -29,7 +29,7 @@ If using as a library, you need to import `peercoin_rpc` as well:
 
 `from peercoin_rpc import Client`
 
-you need to create a new `Client` object to enable communication with `ppcoind`.
+you need to create a new `Client` instance to enable communication with `ppcoind`.
 
 `ppc_node = Client(testnet=True, username="username", password="password")`
 
@@ -61,7 +61,7 @@ On the command line:
 
 As a library:
 
-* `send(send_address, send_amount, metadata)`
+* `send(ppc_node, send_address, send_amount, metadata)`
 
   ```
   send_address is the peercoin address of the recipient
@@ -75,8 +75,8 @@ As a library:
 * Examples
 
   ```
-  send('PCrtba6CAGBB7ztsVGhrAnCs6hvt4t6Pep', 0.001, 'Hello, blockchain!')
-  send('mzEJxCrdva57shpv62udriBBgMECmaPce4', 0.001, 'Hello, testnet!')
+  send(ppc_node, 'PCrtba6CAGBB7ztsVGhrAnCs6hvt4t6Pep', 0.001, 'Hello, blockchain!')
+  send(ppc_node, 'mzEJxCrdva57shpv62udriBBgMECmaPce4', 0.001, 'Hello, testnet!')
   ```
 
 
@@ -105,7 +105,7 @@ On the command line:
 
 As a library:
 
-* `store(data)`
+* `store(ppc_node, data)`
   
   ```
   <data> is the string of raw bytes to be stored
@@ -119,7 +119,7 @@ As a library:
 * Examples:
 
   ```
-  store('This example stores 47 bytes in the blockchain.')
+  store(ppc_node, 'This example stores 47 bytes in the blockchain.')
   ```
 
 TO RETRIEVE SOME DATA FROM OP_RETURNs IN THE BLOCKCHAIN
@@ -148,7 +148,7 @@ On the command line:
 
 As a library:
 
-* `retrieve(ref, max_results=1)`
+* `retrieve(ppc_node, ref, max_results=1)`
 
   ```
   <ref> is the reference that was returned by a previous storage operation
@@ -169,8 +169,8 @@ As a library:
 * Examples:
 
   ```
-  retrieve('356115-052075')
-  retrieve('396381-059737', 1)
+  retrieve(ppc_node, '356115-052075')
+  retrieve(ppc_node, '396381-059737', 1)
   ```
 
 
