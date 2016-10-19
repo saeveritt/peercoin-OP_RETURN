@@ -151,7 +151,7 @@ def retrieve(node, ref, max_results=1):
         return {'error': 'Ref is not valid'}
 
     # Collect and return the results
-    results=[]
+    results = []
 
     for height in heights:
         if height == 0:
@@ -171,75 +171,69 @@ def retrieve(node, ref, max_results=1):
         found = Data_utils.find_txn_data(txn_unpacked)
 
         if found:
-          # Collect data from txid which matches ref and contains an OP_RETURN
+            # Collect data from txid which matches ref and contains an OP_RETURN
 
-          result={
-            'txids': [str(txid)],
-            'data': found['op_return'],
-          }
+            result = {
+                'txids': [str(txid)],
+                'data': found['op_return'],
+                }
 
-          key_heights={height: True}
+            key_heights = {height: True}
 
-          # Work out which other block heights / mempool we should try
+            if height == 0: # Work out which other block heights / mempool we should try
+                try_heights = [] # nowhere else to look if first still in mempool
 
-          if height == 0:
-            try_heights = [] # nowhere else to look if first still in mempool
-          else:
-            result['ref'] = Data_utils.calc_ref(height, txid, txns.keys())
-            try_heights = Data_utils.get_try_heights(height + 1, max_height, False)
-
-          # Collect the rest of the data, if appropriate
-
-          if height == 0:
-            this_txns = TX_utils.get_mempool_txns() # now retrieve all to follow chain
-          else:
-            this_txns = txns
-
-          last_txid=txid
-          this_height=height
-
-          while found['index'] < (len(txn_unpacked['vout'])-1): # this means more data to come
-            next_txid=TX_utils.find_spent_txid(this_txns, last_txid, found['index']+1)
-
-            # If we found the next txid in the data chain
-
-            if next_txid:
-              result['txids'].append(str(next_txid))
-
-              txn_unpacked=this_txns[next_txid]
-              found = Data_utils.find_txn_data(txn_unpacked)
-
-              if found:
-                result['data']+=found['op_return']
-                key_heights[this_height]=True
-              else:
-                result['error']='Data incomplete - missing OP_RETURN'
-                break
-
-              last_txid=next_txid
-
-            # Otherwise move on to the next height to keep looking
             else:
-              if len(try_heights):
-                this_height = try_heights.pop(0)
+                result['ref'] = Data_utils.calc_ref(height, txid, txns.keys())
+                try_heights = Data_utils.get_try_heights(height + 1, max_height, False)
 
-                if this_height == 0:
-                  this_txns = TX_utils.get_mempool_txns()
-                else:
-                  this_txns = TX_utils.get_block_txns(this_height, testnet)
+            if height == 0: # Collect the rest of the data, if appropriate
+                this_txns = TX_utils.get_mempool_txns() # now retrieve all to follow chain
+            else:
+                this_txns = txns
 
-              else:
-                result['error'] = 'Data incomplete - could not find next transaction'
-                break
+            last_txid = txid
+            this_height = height
 
-          # Finish up the information about this result
+            while found['index'] < (len(txn_unpacked['vout'])-1): # this means more data to come
+                next_txid = TX_utils.find_spent_txid(this_txns, last_txid, found['index'] + 1)
 
-          result['heights']=list(key_heights.keys())
-          results.append(result)
+                # If we found the next txid in the data chain
+                if next_txid:
+                    result['txids'].append(str(next_txid))
 
-        if len(results)>=max_results:
-            break # stop if we have collected enough
-    
+                    txn_unpacked = this_txns[next_txid]
+                    found = Data_utils.find_txn_data(txn_unpacked)
+
+                    if found:
+                        result['data'] += found['op_return']
+                        key_heights[this_height] = True
+                    else:
+                        result['error'] = 'Data incomplete - missing OP_RETURN'
+                        break
+
+                    last_txid = next_txid
+
+                else: # Otherwise move on to the next height to keep looking
+                    if len(try_heights):
+                        this_height = try_heights.pop(0)
+
+                        if this_height == 0:
+                            this_txns = TX_utils.get_mempool_txns()
+                        else:
+                            this_txns = TX_utils.get_block_txns(this_height, testnet)
+
+                    else:
+                        result['error'] = 'Data incomplete - could not find next transaction'
+                        break
+
+            # Finish up the information about this result
+            result['heights'] = list(key_heights.keys())
+            results.append(result)
+
+            if len(results) >= max_results:
+                break # stop if we have collected enough
+
     return results
 
 
