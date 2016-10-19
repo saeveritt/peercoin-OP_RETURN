@@ -25,7 +25,6 @@
 # THE SOFTWARE.
 
 import argparse
-from peercoin_rpc import Client
 import base64, random, binascii, struct, string, re, hashlib
 
 # Python 2-3 compatibility logic
@@ -697,6 +696,8 @@ if __name__ == "__main__":
     parser.add_argument("-store", help="Store some data on the blockchain: <data>", nargs="*")
     parser.add_argument("-retrieve", help="Retrieve OP_RETURN data from the blockchain.", nargs="*")
     args = parser.parse_args()
+
+    from peercoin_rpc import Client # import Client only if called as a script
 
     if args.testnet:
         node = Client(testnet=True)
