@@ -42,7 +42,7 @@ OP_RETURN_MAX_BLOCKS=10 # maximum number of blocks to try when retrieving data
 
 # User-facing functions
 def send(node, send_address, send_amount, metadata):
-    '''validats send_address and metadata, assembles the transaction and executes it.'''
+    '''validates send_address and metadata, assembles the transaction and executes it.'''
 
     # Validate some parameters
     if not metadata:
@@ -61,27 +61,27 @@ def send(node, send_address, send_amount, metadata):
     output_amount = send_amount + OP_RETURN_BTC_FEE
 
     # find apropriate inputs
-    inputs, total_sum, change_address = TX_utils.select_inputs(output_amount)
+    inputs, total_sum, change_address = TX_utils(node).select_inputs(output_amount)
     # change
     change_amount = total_sum - output_amount
 
     ## Build the raw transaction
-    outputs={send_address: send_amount}
+    outputs = {send_address: send_amount}
 
-    if change_amount>=OP_RETURN_BTC_DUST:
+    if change_amount >= OP_RETURN_BTC_DUST:
         outputs[change_address] = change_amount
 
-    raw_txn = TX_utils.create_txn(inputs, outputs, metadata)
+    raw_txn = TX_utils(node).create_txn(inputs, outputs, metadata)
     # Sign and send the transaction, return result
-    return TX_utils.sign_send_txn(raw_txn)
+    return TX_utils(node).sign_send_txn(raw_txn)
 
 def store(node, data):
-    # Data is stored in OP_RETURNs within a series of chained transactions.
-    # If the OP_RETURN is followed by another output, the data continues in the transaction spending that output.
-    # When the OP_RETURN is the last output, this also signifies the end of the data.
+    '''Data is stored in OP_RETURNs within a series of chained transactions.
+    If the OP_RETURN is followed by another output, the data continues in the transaction spending that output.
+    When the OP_RETURN is the last output, this also signifies the end of the data.'''
 
     if isinstance(data, basestring):
-        data=data.encode('utf-8') # convert to binary string
+        data = data.encode('utf-8') # convert to binary string
 
     if not data:
         return {'error': 'Some data is required to be stored'}
@@ -90,7 +90,7 @@ def store(node, data):
     output_amount = OP_RETURN_BTC_FEE * int((data_len+OP_RETURN_MAX_BYTES-1) / OP_RETURN_MAX_BYTES) # number of transactions required
 
     # find apropriate inputs
-    inputs, total_sum, change_address = TX_utils.select_inputs(output_amount)
+    inputs, total_sum, change_address = TX_utils(node).select_inputs(output_amount)
 
     # Find the current blockchain height and mempool txids
     height = int(node.getblockcount())
@@ -106,37 +106,37 @@ def store(node, data):
     for data_ptr in range(0, data_len, OP_RETURN_MAX_BYTES):
 
         # Some preparation for this iteration
-        last_txn=((data_ptr+OP_RETURN_MAX_BYTES)>=data_len) # is this the last tx in the chain?
-        change_amount=input_amount-OP_RETURN_BTC_FEE
-        metadata=data[data_ptr:data_ptr+OP_RETURN_MAX_BYTES]
+        last_txn = ((data_ptr + OP_RETURN_MAX_BYTES) >= data_len) # is this the last tx in the chain?
+        change_amount = input_amount - OP_RETURN_BTC_FEE
+        metadata = data[data_ptr:data_ptr + OP_RETURN_MAX_BYTES]
 
         # Build and send this transaction
         outputs={}
-        if change_amount>=OP_RETURN_BTC_DUST: # might be skipped for last transaction
+        if change_amount >= OP_RETURN_BTC_DUST: # might be skipped for last transaction
             outputs[change_address]=change_amount
 
-        raw_txn = TX_utils.create_txn(inputs, outputs, metadata, len(outputs) if last_txn else 0)
+        raw_txn = TX_utils(node).create_txn(inputs, outputs, metadata, len(outputs) if last_txn else 0)
 
-        send_result = TX_utils.sign_send_txn(raw_txn)
+        send_result = TX_utils(node).sign_send_txn(raw_txn)
 
         # Check for errors and collect the txid
         if 'error' in send_result:
-            result['error']=send_result['error']
+            result['error'] = send_result['error']
             break
 
         result['txids'].append(send_result['txid'])
 
         if data_ptr == 0:
-            result['ref'] = Data_utils.calc_ref(height, send_result['txid'], avoid_txids)
+            result['ref'] = Data_utils(node).calc_ref(height, send_result['txid'], avoid_txids)
 
         # Prepare inputs for next iteration
-        inputs=[{
+        inputs = [{
             'txid': send_result['txid'],
             'vout': 1,
             }]
 
-        input_amount=change_amount
-    
+        input_amount = change_amount
+
     return result # Return the final result
 
 def retrieve(node, ref, max_results=1):
@@ -238,8 +238,12 @@ def retrieve(node, ref, max_results=1):
 class TX_utils:
 
     @classmethod
+    def __init__(cls, node):
+        cls.node = node
+
+    @classmethod
     def validate_address(cls, address):
-        assert node.validateaddress(address)["isvalid"] == True
+        assert cls.node.validateaddress(address)["isvalid"] == True
 
     @classmethod
     def select_inputs(cls, total_amount):
@@ -250,7 +254,7 @@ class TX_utils:
 
         vins = []
         utxo_sum = float(-0.01) ## starts from negative due to fee
-        for i in sorted(node.listunspent(), key=itemgetter('confirmations')):
+        for i in sorted(cls.node.listunspent(), key=itemgetter('confirmations')):
             vins.append({"txid":i["txid"].encode(), "vout":i["vout"]})
             utxo_sum = utxo_sum + float(i["amount"])
             if utxo_sum >= total_amount:
@@ -263,29 +267,30 @@ class TX_utils:
     @classmethod
     def create_txn(cls, inputs, outputs, metadata):
 
-        raw_txn = node.createrawtransaction(inputs, outputs)
-        txn_unpacked = cls.unpack_txn(Data_utils.hex_to_bin(raw_txn))
+        raw_txn = cls.node.createrawtransaction(inputs, outputs)
+        txn_unpacked = cls.unpack_txn(Data_utils(cls.node).hex_to_bin(raw_txn))
 
         if len(metadata) <= 252:  # 1 byte used for variable int , format uint_8
-            data = b'\x4c' + struct.pack("B",len(metadata)) + metadata # OP_PUSHDATA1 format
+            data = b'\x4c' + struct.pack("B", len(metadata)) + metadata # OP_PUSHDATA1 format
         elif len(metadata) <= 65536:
-            data = b'\x4d' + struct.pack('<H',len(metadata)) + metadata # OP_PUSHDATA2 format
+            data = b'\x4d' + struct.pack('<H', len(metadata)) + metadata # OP_PUSHDATA2 format
         elif len(metadata) <= 4294967295:
-            data = b'\x4e' + struct.pack('<L',len(metadata)) + metadata # OP_PUSHDATA4 format
+            data = b'\x4e' + struct.pack('<L', len(metadata)) + metadata # OP_PUSHDATA4 format
         else:
             return {'error': 'metadata exceeds maximum length.'}
-        
-        txn_unpacked["vout"].append(
-            {"value": 0, "scriptPubKey": "6a" + Data_utils.bin_to_hex(data)})
 
-        return Data_utils.bin_to_hex(cls.pack_txn(txn_unpacked))
-    
+        txn_unpacked["vout"].append(
+            {"value": 0, "scriptPubKey": "6a" + Data_utils(cls.node).bin_to_hex(data)})
+
+        return Data_utils(cls.node).bin_to_hex(cls.pack_txn(txn_unpacked))
+
     @classmethod
     def sign_send_txn(cls, raw_txn):
+        '''Sign and send the transaction.'''
 
         from math import ceil as cl
-        
-        signed_txn = node.signrawtransaction(raw_txn)
+
+        signed_txn = cls.node.signrawtransaction(raw_txn)
         if not ('complete' in signed_txn and signed_txn['complete']):
             return {'error': 'Could not sign the transaction'}
 
@@ -294,41 +299,41 @@ class TX_utils:
         if (txn_size / 1000 > OP_RETURN_BTC_FEE * 100):
             return {'error': 'Transaction fee too low to be accepted on the peercoin chain. Required fee: ' + str(cl(txn_size / 1024) * 0.01) + ' PPC'}
 
-        send_txid = node.sendrawtransaction(signed_txn["hex"])
+        send_txid = cls.node.sendrawtransaction(signed_txn["hex"])
         if not (isinstance(send_txid, basestring) and len(send_txid) == 64):
             return {'error': 'Could not send the transaction'}
 
         return {'txid': str(send_txid)}
-    
+
     @classmethod
     def list_mempool_txns(cls):
-        return node.getrawmempool()
-    
+        return cls.node.getrawmempool()
+
     @classmethod
     def get_mempool_txn(cls, txid):
-        raw_txn = node.getrawtransaction(txid)
+        raw_txn = cls.node.getrawtransaction(txid)
         return cls.unpack_txn(Data_utils.hex_to_bin(raw_txn))
-    
+
     @classmethod
     def get_mempool_txns(cls):
         txids = cls.list_mempool_txns()
 
-        txns={}
+        txns = {}
         for txid in txids:
             txns[txid] = cls.get_mempool_txn(txid)
 
         return txns
-    
+
     @classmethod
     def get_raw_block(cls, block_height):
 
-        block_hash = node.getblockhash(block_height)
+        block_hash = cls.node.getblockhash(block_height)
         if not (isinstance(block_hash, basestring) and len(block_hash) == 64):
             return {'error': 'Block at height ' + str(height) + ' not found'}
 
         return {
-            'block': Data_utils.hex_to_bin(node.getblock(block_hash))
-        }
+            'block': Data_utils(cls.node).hex_to_bin(cls.node.getblock(block_hash))
+            }
 
     @classmethod
     def get_block_txns(cls, block_height):
@@ -336,37 +341,38 @@ class TX_utils:
         if 'error' in raw_block:
             return {'error': raw_block['error']}
 
-        block=cls.unpack_block(raw_block['block'])
+        block = cls.unpack_block(raw_block['block'])
 
         return block['txs']
-     
+
     @classmethod
     def unpack_txn(cls, binary):
         return cls.unpack_txn_buffer(OP_RETURN_buffer(binary))
-    
+
     @classmethod
     def pack_txn(cls, txn):
-        binary=b''
+
+        binary = b''
 
         binary += struct.pack('<L', txn['version'])
         # peercoin: 4 byte timestamp https://wiki.peercointalk.org/index.php?title=Transactions
         binary += struct.pack('<L', txn['timestamp'])
 
-        binary += cls.pack_varint(len(txn['vin']))
+        binary += Data_utils(cls.node).pack_varint(len(txn['vin']))
 
         for input in txn['vin']:
-            binary += Data_utils.hex_to_bin(input['txid'])[::-1]
+            binary += Data_utils(cls.node).hex_to_bin(input['txid'])[::-1]
             binary += struct.pack('<L', input['vout'])
-            binary += cls.pack_varint(int(len(input['scriptSig']) / 2 )) # divide by 2 because it is currently in hex
-            binary += Data_utils.hex_to_bin(input['scriptSig'])
+            binary += Data_utils(cls.node).pack_varint(int(len(input['scriptSig']) / 2)) # divide by 2 because it is currently in hex
+            binary += Data_utils(cls.node).hex_to_bin(input['scriptSig'])
             binary += struct.pack('<L', input['sequence'])
 
-        binary += cls.pack_varint(len(txn['vout']))
+        binary += Data_utils(cls.node).pack_varint(len(txn['vout']))
 
         for output in txn['vout']:
-            binary += Data_utils.pack_uint64(int(round(output['value'] * 1000000 )))
-            binary += Data_utils.pack_varint(int(len(output['scriptPubKey']) / 2 )) # divide by 2 because it is currently in hex
-            binary += Data_utils.hex_to_bin(output['scriptPubKey'])
+            binary += Data_utils(cls.node).pack_uint64(int(round(output['value'] * 1000000 )))
+            binary += Data_utils(cls.node).pack_varint(int(len(output['scriptPubKey']) / 2 )) # divide by 2 because it is currently in hex
+            binary += Data_utils(cls.node).hex_to_bin(output['scriptPubKey'])
 
         binary += struct.pack('<L', txn['locktime'])
 
@@ -374,8 +380,9 @@ class TX_utils:
 
     @classmethod
     def unpack_block(cls, binary):
-        buffer=OP_RETURN_buffer(binary)
-        block={}
+
+        buffer = OP_RETURN_buffer(binary)
+        block = {}
 
         block['version'] = buffer.shift_unpack(4, '<L')
         block['hashPrevBlock'] = Data_utils.bin_to_hex(buffer.shift(32)[::-1])
@@ -392,25 +399,25 @@ class TX_utils:
         while buffer.remaining():
             transaction = cls.unpack_txn_buffer(buffer)
             new_ptr = buffer.used()
-            size = new_ptr-old_ptr
+            size = new_ptr - old_ptr
 
             raw_txn_binary = binary[old_ptr:old_ptr + size]
-            txid = Data_utils.bin_to_hex(hashlib.sha256(hashlib.sha256(raw_txn_binary).digest()).digest()[::-1])
+            txid = Data_utils(cls.node).bin_to_hex(hashlib.sha256(hashlib.sha256(raw_txn_binary).digest()).digest()[::-1])
 
             old_ptr = new_ptr
             transaction['size'] = size
             block['txs'][txid] = transaction
 
         return block
-    
+
     @classmethod
     def unpack_txn_buffer(cls, buffer):
         # see: https://en.bitcoin.it/wiki/Transactions
 
-        txn={
+        txn = {
             'vin': [],
             'vout': [],
-        }
+            }
 
         txn['version'] = buffer.shift_unpack(4, '<L') # small-endian 32-bits
         # peercoin: 4 byte timestamp https://wiki.peercointalk.org/index.php?title=Transactions
@@ -423,10 +430,10 @@ class TX_utils:
         for _ in range(inputs):
             _input = {}
 
-            _input['txid'] = Data_utils.bin_to_hex(buffer.shift(32)[::-1])
+            _input['txid'] = Data_utils(cls.node).bin_to_hex(buffer.shift(32)[::-1])
             _input['vout'] = buffer.shift_unpack(4, '<L')
-            length=buffer.shift_varint()
-            _input['scriptSig'] = Data_utils.bin_to_hex(buffer.shift(length))
+            length = buffer.shift_varint()
+            _input['scriptSig'] = Data_utils(cls.node).bin_to_hex(buffer.shift(length))
             _input['sequence'] = buffer.shift_unpack(4, '<L')
 
             txn['vin'].append(_input)
@@ -436,18 +443,18 @@ class TX_utils:
             return None
 
         for _ in range(outputs):
-            output={}
+            output = {}
 
-            output['value']=float(buffer.shift_uint64()) / 1000000
-            length=buffer.shift_varint()
-            output['scriptPubKey'] = Data_utils.bin_to_hex(buffer.shift(length))
+            output['value'] = float(buffer.shift_uint64()) / 1000000
+            length = buffer.shift_varint()
+            output['scriptPubKey'] = Data_utils(cls.node).bin_to_hex(buffer.shift(length))
 
             txn['vout'].append(output)
 
         txn['locktime'] = buffer.shift_unpack(4, '<L')
 
         return txn
-    
+
     @classmethod
     def find_spent_txid(cls, txns, spent_txid, spent_vout):
 
@@ -457,38 +464,43 @@ class TX_utils:
                     return txid
         return None
 
-# Working with data references
-
-# The format of a data reference is: [estimated block height]-[partial txid] - where:
-
-# [estimated block height] is the block where the first transaction might appear and following
-# which all subsequent transactions are expected to appear. In the event of a weird blockchain
-# reorg, it is possible the first transaction might appear in a slightly earlier block. When
-# embedding data, we set [estimated block height] to 1+(the current block height).
-
-# [partial txid] contains 2 adjacent bytes from the txid, at a specific position in the txid:
-# 2*([partial txid] div 65536) gives the offset of the 2 adjacent bytes, between 0 and 28.
-# ([partial txid] mod 256) is the byte of the txid at that offset.
-# (([partial txid] mod 65536) div 256) is the byte of the txid at that offset plus one.
-# Note that the txid is ordered according to user presentation, not raw data in the block.
 
 class Data_utils:
-    
+
+    '''Working with data references:
+
+    The format of a data reference is: [estimated block height]-[partial txid] - where:
+    [estimated block height] is the block where the first transaction might appear and following
+    which all subsequent transactions are expected to appear. In the event of a weird blockchain
+    reorg, it is possible the first transaction might appear in a slightly earlier block. When
+    embedding data, we set [estimated block height] to 1+(the current block height).
+
+    [partial txid] contains 2 adjacent bytes from the txid, at a specific position in the txid:
+    2*([partial txid] div 65536) gives the offset of the 2 adjacent bytes, between 0 and 28.
+    ([partial txid] mod 256) is the byte of the txid at that offset.
+    (([partial txid] mod 65536) div 256) is the byte of the txid at that offset plus one.
+    Note that the txid is ordered according to user presentation, not raw data in the block.
+    '''
+
+    @classmethod
+    def __init__(cls, node):
+        cls.node = node
+
     @classmethod
     def calc_ref(cls, next_height, txid, avoid_txids):
         txid_binary = cls.hex_to_bin(txid)
 
         for txid_offset in range(15):
-            sub_txid=txid_binary[2*txid_offset:2*txid_offset+2]
-            clashed=False
+            sub_txid = txid_binary[2*txid_offset:2*txid_offset+2]
+            clashed = False
 
             for avoid_txid in avoid_txids:
                 avoid_txid_binary = cls.hex_to_bin(avoid_txid)
 
             if (
-                (avoid_txid_binary[2*txid_offset:2*txid_offset+2]==sub_txid) and
-                (txid_binary!=avoid_txid_binary)
-            ):
+                (avoid_txid_binary[2*txid_offset:2*txid_offset+2] == sub_txid) and
+                    (txid_binary != avoid_txid_binary)
+                ):
                 clashed=True
                 break
 
@@ -498,47 +510,49 @@ class Data_utils:
         if clashed: # could not find a good reference
             return None
 
-        tx_ref=ord(txid_binary[2*txid_offset:1+2*txid_offset])+256*ord(txid_binary[1+2*txid_offset:2+2*txid_offset])+65536*txid_offset
+        tx_ref = ord(txid_binary[2*txid_offset:1+2*txid_offset])+256*ord(txid_binary[1+2*txid_offset:2+2*txid_offset])+65536*txid_offset
 
         return '%06d-%06d' % (next_height, tx_ref)
-    
+
     @classmethod
     def get_ref_parts(cls, ref):
         if not re.search('^[0-9]+\-[0-9A-Fa-f]+$', ref): # also support partial txid for second half
             return None
 
-        parts=ref.split('-')
+        parts = ref.split('-')
 
         if re.search('[A-Fa-f]', parts[1]):
             if len(parts[1]) >= 4:
                 txid_binary = cls.hex_to_bin(parts[1][0:4])
-                parts[1]=ord(txid_binary[0:1])+256*ord(txid_binary[1:2])+65536*0
+                parts[1] = ord(txid_binary[0:1])+256*ord(txid_binary[1:2])+65536*0
             else:
                 return None
 
-        parts=list(map(int, parts))
+        parts = list(map(int, parts))
 
-        if parts[1]>983039: # 14*65536+65535
+        if parts[1] > 983039: # 14*65536+65535
             return None
 
         return parts
-    
+
     @classmethod
     def get_ref_heights(cls, ref, max_height):
+
         parts = cls.get_ref_parts(ref)
         if not parts:
             return None
 
         return cls.get_try_heights(parts[0], max_height, True)
-    
+
     @classmethod
     def get_try_heights(cls, est_height, max_height, also_back):
+
         forward_height = est_height
         back_height = min(forward_height-1, max_height)
 
-        heights=[]
-        mempool=False
-        try_height=0
+        heights = []
+        mempool = False
+        try_height = 0
 
         while True:
             if also_back and ((try_height%3)==2): # step back every 3 tries
@@ -596,10 +610,11 @@ class Data_utils:
 
     @classmethod
     def get_script_data(cls, scriptPubKeyBinary):
-        op_return=None
+
+        op_return = None
 
         if scriptPubKeyBinary[0:1] == b'\x6a':
-            first_ord=ord(scriptPubKeyBinary[1:2])
+            first_ord = ord(scriptPubKeyBinary[1:2])
 
             if first_ord <= 75:
                 op_return = scriptPubKeyBinary[2:2+first_ord]
@@ -609,7 +624,7 @@ class Data_utils:
                 op_return = scriptPubKeyBinary[4:4+ord(scriptPubKeyBinary[2:3])+256*ord(scriptPubKeyBinary[3:4])]
 
         return op_return
-    
+
     @classmethod
     def pack_varint(cls, integer):
         if integer > 0xFFFFFFFF:
@@ -622,7 +637,7 @@ class Data_utils:
             packed = struct.pack('B', integer)
 
         return packed
-    
+
     @classmethod
     def pack_uint64(cls, integer):
         upper = int(integer / 4294967296)
@@ -631,26 +646,26 @@ class Data_utils:
         return struct.pack('<L', lower) + struct.pack('<L', upper)
 
     # Converting binary <-> hexadecimal
-    @classmethod
-    def hex_to_bin(cls, hex):
+    @staticmethod
+    def hex_to_bin(hex):
         try:
-            raw=binascii.a2b_hex(hex)
+            raw = binascii.a2b_hex(hex)
         except Exception:
             return None
 
         return raw
-    
-    @classmethod
-    def bin_to_hex(cls, string):
+
+    @staticmethod
+    def bin_to_hex(string):
         return binascii.b2a_hex(string).decode('utf-8')
 
 
 class OP_RETURN_buffer(): # Helper class for unpacking bitcoin binary data
 
     def __init__(self, data, ptr=0):
-        self.data=data
-        self.len=len(data)
-        self.ptr=ptr
+        self.data = data
+        self.len = len(data)
+        self.ptr = ptr
 
     def shift(self, chars):
         prefix = self.data[self.ptr:self.ptr+chars]
