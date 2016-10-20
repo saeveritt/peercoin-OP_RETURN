@@ -43,31 +43,31 @@ OP_RETURN_MAX_BLOCKS=10 # maximum number of blocks to try when retrieving data
 # User-facing functions
 def send(node, send_address, send_amount, metadata):
     '''validats send_address and metadata, assembles the transaction and executes it.'''
-    
+
     # Validate some parameters
     if not metadata:
         raise ValueError("metadata you want to write is null.")
 
     if isinstance(metadata, basestring): ## check for py/py2.7 compatibility
         metadata = metadata.encode('utf-8') # convert to binary string
-    
+
     if len(metadata) > 65536:
         return {'error': 'This library only supports metadata up to 65536 bytes in size'}
-    
+
     if len(metadata) > OP_RETURN_MAX_BYTES:
         return {'error': 'Metadata has ' + str(len(metadata)) + ' bytes but is limited to ' + str(OP_RETURN_MAX_BYTES) + ' (see OP_RETURN_MAX_BYTES)'}
-    
+
     # Calculate amounts and choose inputs
     output_amount = send_amount + OP_RETURN_BTC_FEE
-    
+
     # find apropriate inputs
     inputs, total_sum, change_address = TX_utils.select_inputs(output_amount)
     # change
     change_amount = total_sum - output_amount
-    
+
     ## Build the raw transaction
     outputs={send_address: send_amount}
-    
+
     if change_amount>=OP_RETURN_BTC_DUST:
         outputs[change_address] = change_amount
 
@@ -79,32 +79,32 @@ def store(node, data):
     # Data is stored in OP_RETURNs within a series of chained transactions.
     # If the OP_RETURN is followed by another output, the data continues in the transaction spending that output.
     # When the OP_RETURN is the last output, this also signifies the end of the data.
-    
+
     if isinstance(data, basestring):
         data=data.encode('utf-8') # convert to binary string
-    
+
     if not data:
         return {'error': 'Some data is required to be stored'}
-    
+
     # Calculate amounts and choose first inputs to use
     output_amount = OP_RETURN_BTC_FEE * int((data_len+OP_RETURN_MAX_BYTES-1) / OP_RETURN_MAX_BYTES) # number of transactions required
-    
+
     # find apropriate inputs
     inputs, total_sum, change_address = TX_utils.select_inputs(output_amount)
-    
+
     # Find the current blockchain height and mempool txids
     height = int(node.getblockcount())
     avoid_txids = node.getrawmempool()
-    
+
     # Check if output splitting is supported
     if not OP_RETURN_STORE_SPLIT and len(data) > OP_RETURN_MAX_BYTES:
         return {'error': 'Data too large & splitting disabled, set OP_RETURN_STORE_SPLIT=True to split the data over multiple transactions.'}
-    
+
     # Loop to build and send transactions
-    result={'txids':[]}
-    
+    result = {'txids':[]}
+
     for data_ptr in range(0, data_len, OP_RETURN_MAX_BYTES):
-        
+
         # Some preparation for this iteration
         last_txn=((data_ptr+OP_RETURN_MAX_BYTES)>=data_len) # is this the last tx in the chain?
         change_amount=input_amount-OP_RETURN_BTC_FEE
@@ -251,7 +251,7 @@ class TX_utils:
         vins = []
         utxo_sum = float(-0.01) ## starts from negative due to fee
         for i in sorted(node.listunspent(), key=itemgetter('confirmations')):
-            vins.append({"txid":i["txid"].encode(),"vout":i["vout"]})
+            vins.append({"txid":i["txid"].encode(), "vout":i["vout"]})
             utxo_sum = utxo_sum + float(i["amount"])
             if utxo_sum >= total_amount:
                  #return txids
