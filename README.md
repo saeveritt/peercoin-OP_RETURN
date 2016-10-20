@@ -19,13 +19,18 @@ REQUIREMENTS
 * [peercoin_rpc](https://github.com/peerchemist/peercoin_rpc)
 
 
+INSTALL
+---------------
+`pip install git+git://github.com/PeerAssets/peercoin-OP_RETURN.git`
+
+
 BEFORE YOU START
 ----------------
-Check the constant settings at the top of OP_RETURN.py.
+Check the constant settings at the top of op_return.py.
 If you have just installed peercoin, wait for it to download and verify old blocks.
 If using as a library, you need to import `peercoin_rpc` as well:
 
-`from OP_RETURN import *`
+`from op_return import *`
 
 `from peercoin_rpc import Client`
 
@@ -39,7 +44,7 @@ TO SEND A PEERCOIN TRANSACTION WITH SOME OP_RETURN METADATA
 
 On the command line:
 
-* `python OP_RETURN.py -send <send-address> <send-amount> <metadata> (-testnet)`
+* `python op_return -send <send-address> <send-amount> <metadata> (-testnet)`
 
   ```
   <send-address> is the peercoin address of the recipient
@@ -54,9 +59,9 @@ On the command line:
 * Examples:
 
   ```
-  python OP_RETURN.py -send PCrtba6CAGBB7ztsVGhrAnCs6hvt4t6Pep 0.001 'Hello, blockchain!'
-  python OP_RETURN.py -send PCrtba6CAGBB7ztsVGhrAnCs6hvt4t6Pep 0.001 48656c6c6f2c20626c6f636b636861696e21
-  python OP_RETURN.py -send -testnet mzEJxCrdva57shpv62udriBBgMECmaPce4 0.001 'Hello, testnet!'
+  python op_return.py -send PCrtba6CAGBB7ztsVGhrAnCs6hvt4t6Pep 0.001 'Hello, blockchain!'
+  python op_return.py -send PCrtba6CAGBB7ztsVGhrAnCs6hvt4t6Pep 0.001 48656c6c6f2c20626c6f636b636861696e21
+  python op_return.py -send -testnet mzEJxCrdva57shpv62udriBBgMECmaPce4 0.001 'Hello, testnet!'
   ```
 
 As a library:
@@ -85,7 +90,7 @@ TO STORE SOME DATA IN THE BLOCKCHAIN USING OP_RETURNs
 
 On the command line:
 
-* `python OP_RETURN.py -store <data>`
+* `python op_return.py -store <data>`
 
   ```
   <data> is a hex string or raw string containing the data to be stored
@@ -99,8 +104,8 @@ On the command line:
 * Examples:
 
   ```
-  python OP_RETURN.py -store 'This example stores 47 bytes in the blockchain.'
-  python OP_RETURN.py -store -testnet 'This example stores 44 bytes in the testnet.'
+  python op_return.py -store 'This example stores 47 bytes in the blockchain.'
+  python op_return.py -store -testnet 'This example stores 44 bytes in the testnet.'
   ```
 
 As a library:
@@ -127,7 +132,7 @@ TO RETRIEVE SOME DATA FROM OP_RETURNs IN THE BLOCKCHAIN
 
 On the command line:
 
-* `python OP_RETURN.py -retrieve <ref>`
+* `python op_return.py -retrieve <ref>`
 
   ```
   <ref> is the reference that was returned by a previous storage operation
@@ -142,8 +147,8 @@ On the command line:
 * Examples:
 
   ```
-  python OP_RETURN.py -retrieve 356115-052075
-  python OP_RETURN.py -testnet -retrieve 396381-059737
+  python op_return.py -retrieve 356115-052075
+  python op_return.py -testnet -retrieve 396381-059737
   ```
 
 As a library:
