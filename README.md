@@ -30,7 +30,7 @@ Check the constant settings at the top of op_return.py.
 If you have just installed peercoin, wait for it to download and verify old blocks.
 If using as a library, you need to import `peercoin_rpc` as well:
 
-`from op_return import *`
+`import op_return`
 
 `from peercoin_rpc import Client`
 
@@ -66,11 +66,11 @@ On the command line:
 
 As a library:
 
-* `send(ppc_node, send_address, send_amount, metadata)`
+* `op_return.send(ppc_node, send_address, send_amount, metadata)`
 
   ```
   send_address is the peercoin address of the recipient
-  send_amount is the amount to send (in units of BTC)
+  send_amount is the amount to send (in units of PPC)
   metadata is a string of raw bytes containing the OP_RETURN metadata
   ```
 
@@ -80,8 +80,8 @@ As a library:
 * Examples
 
   ```
-  send(ppc_node, 'PCrtba6CAGBB7ztsVGhrAnCs6hvt4t6Pep', 0.001, 'Hello, blockchain!')
-  send(ppc_node, 'mzEJxCrdva57shpv62udriBBgMECmaPce4', 0.001, 'Hello, testnet!')
+  op_return.send(ppc_node, 'PCrtba6CAGBB7ztsVGhrAnCs6hvt4t6Pep', 0.01, 'Hello, blockchain!')
+  op_return.send(ppc_node, 'mzEJxCrdva57shpv62udriBBgMECmaPce4', 0.01, 'Hello, testnet!')
   ```
 
 
@@ -110,7 +110,7 @@ On the command line:
 
 As a library:
 
-* `store(ppc_node, data)`
+* `op_return.store(ppc_node, data)`
   
   ```
   <data> is the string of raw bytes to be stored
@@ -124,7 +124,7 @@ As a library:
 * Examples:
 
   ```
-  store(ppc_node, 'This example stores 47 bytes in the blockchain.')
+  op_return.store(ppc_node, 'This example stores 47 bytes in the blockchain.')
   ```
 
 TO RETRIEVE SOME DATA FROM OP_RETURNs IN THE BLOCKCHAIN
@@ -174,8 +174,8 @@ As a library:
 * Examples:
 
   ```
-  retrieve(ppc_node, '356115-052075')
-  retrieve(ppc_node, '396381-059737', 1)
+  op_return.retrieve(ppc_node, '356115-052075')
+  op_return.retrieve(ppc_node, '396381-059737', 1)
   ```
 
 
