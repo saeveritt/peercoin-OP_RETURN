@@ -45,8 +45,6 @@ def send(node, send_address, send_amount, metadata):
     '''validats send_address and metadata, assembles the transaction and executes it.'''
     
     # Validate some parameters
-    assert node.validateaddress(send_address)["isvalid"] 
-    
     if not metadata:
         raise ValueError("metadata you want to write is null.")
 
@@ -240,6 +238,10 @@ def retrieve(node, ref, max_results=1):
 class TX_utils:
 
     @classmethod
+    def validate_address(cls, address):
+        assert node.validateaddress(address)["isvalid"] == True
+
+    @classmethod
     def select_inputs(cls, total_amount):
         '''finds apropriate utxo's to include in rawtx, while being careful
         to never spend old transactions with a lot of coin age'''
@@ -254,10 +256,10 @@ class TX_utils:
             if utxo_sum >= total_amount:
                  #return txids
                 change_address = i["address"].encode()
-                return vins , utxo_sum , change_address
+                return vins, utxo_sum, change_address
         if utxo_sum < total_amount:
             raise ValueError("Not enough funds.")
-    
+
     @classmethod
     def create_txn(cls, inputs, outputs, metadata):
 
