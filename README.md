@@ -1,4 +1,4 @@
-# peercoin-OP_RETURN
+# op_return
 
 ## Simple Python library for using OP_RETURNs in peercoin transactions.
 
@@ -189,3 +189,6 @@ peercoin-OP_RETURN - 28 July 2016 (hrobeers)
 
 peercoin-OP_RETURN 0.21 - 15 Oct 2016 (peerchemist)
 *  Significant code clenup and redesign.
+
+op_return 0.3 - 20 Oct 2016 (peerchemist)
+*  Futher cleanup and usability fixes.
