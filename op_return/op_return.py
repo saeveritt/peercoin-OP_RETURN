@@ -233,6 +233,25 @@ def retrieve(node, ref, max_results=1):
 
     return results
 
+def op_decode(node,txid):
+    vouts = node.getrawtransaction(txid)['vout']
+    
+    for vout in vouts:
+        asm = vout['scriptPubKey']['asm']
+        n = asm.find('OP_RETURN')
+        if n == -1:
+            continue
+        else:
+            # add 10 because 'OP_RETURN ' is 10 characters
+            n += 10
+            data = asm[n:]
+            n = data.find(' ')
+            #make sure that we don't include trailing opcodes
+            if n == -1:
+                return binascii.unhexlify(data)
+            else:
+                return binascii.unhexlify(data[:n])
+    return {'error': 'OP_RETURN not found'}
 
 # Utility functions
 class TX_utils:
