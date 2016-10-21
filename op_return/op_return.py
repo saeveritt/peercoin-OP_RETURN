@@ -233,7 +233,7 @@ def retrieve(node, ref, max_results=1):
 
     return results
 
-def op_decode(node,txid):
+def read(node,txid):
     vouts = node.getrawtransaction(txid)['vout']
     
     for vout in vouts:
